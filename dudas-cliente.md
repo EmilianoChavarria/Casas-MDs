@@ -12,6 +12,8 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D4 | ¿Descuento por estancia larga? | ⏳ Pendiente | Motor de precios, checkout |
 | D5 | Base de cálculo de los impuestos (para el contador) | ⏳ Pendiente | Cálculo del total, facturación |
 | D6 | ¿Cuántos administradores y cómo entran al panel? | ⏳ Pendiente | Autenticación del panel, alta de usuarios |
+| D7 | Política de cancelación y reembolsos | ⏳ Pendiente | Reservas, pagos, disponibilidad |
+| D8 | Textos legales: aviso de privacidad y términos | ⏳ Pendiente | **Publicar app de Google, activar Stripe en producción** |
 
 ---
 
@@ -290,6 +292,8 @@ El sistema está diseñado para soportar impuestos configurables de ambos tipos 
 > 4. **¿Aplica algún impuesto o derecho municipal adicional** en los municipios donde están las casas?
 > 5. **¿El cliente factura como persona física o moral, y bajo qué régimen?** Determina cómo se emiten los CFDI de las reservas.
 > 6. La retención de impuestos por plataformas digitales aplica a intermediarios tipo Airbnb. **Como este es el sitio propio del cliente y no un marketplace, se entiende que él es el contribuyente directo — ¿es correcto?**
+>
+> 7. **¿Cuántas facturas (CFDI) se emiten al mes hoy, y quién las emite?** El sistema **no** timbrará facturas en su versión inicial (ver sección 5.7): el huésped que la necesite lo marca al reservar y se emite por fuera. Esa decisión se tomó asumiendo que la mayoría de huéspedes serán turistas extranjeros sin RFC. **Si el volumen real de facturas es alto, hay que revisarla antes del lanzamiento**, porque emitirlas a mano es trabajo que crece con las ventas.
 
 ### Ejemplo para ilustrar la duda
 
@@ -360,6 +364,124 @@ Si el personal va a usar Gmail personal, es preferible la **Opción A**, acompa�
 ### Qué se bloquea mientras no se responda
 
 La autenticación del panel de administración. **El sistema de huéspedes con Google no depende de esto** y puede construirse ya. Si más adelante el panel también usa Google, se reaprovecha casi todo el trabajo — el rehacer sería acotado, pero conviene evitarlo.
+
+---
+
+## D7 — Política de cancelación y reembolsos
+
+**Estado:** ⏳ Pendiente
+
+### Contexto
+
+El diseño del sitio ya contempla una sección de "política de cancelación" en la página de cada casa. **Pero no está definido qué dice esa política**, y sin eso no se puede programar qué ocurre cuando alguien cancela.
+
+Cancelar no es solo marcar una reserva como cancelada. Implica devolver dinero (total o parcialmente), liberar las fechas para que otro pueda reservarlas, y decidir qué pasa con el cargo de limpieza, los impuestos y el cupón de descuento si lo usó. Cada una de esas piezas necesita una respuesta.
+
+### Las preguntas concretas
+
+> 1. **¿Todas las casas tendrán la misma política, o quiere poder ser más estricto en las más solicitadas?** Por ejemplo, condiciones más duras para cancelar una casa en Navidad que en temporada baja.
+>
+> 2. **¿Cuántos días antes de la llegada se puede cancelar, y qué porcentaje se devuelve en cada caso?** Ejemplo de referencia del sector: 100% si cancela con 7 días o más de anticipación, 50% entre 2 y 6 días, 0% con menos de 2 días.
+>
+> 3. **¿El huésped puede cancelar por sí mismo desde su perfil, o tiene que solicitarlo y usted lo autoriza?**
+>
+> 4. **¿Se devuelve el cargo de limpieza?** (No hubo limpieza que pagar, así que lo normal es devolverlo íntegro aunque el resto sea parcial.)
+>
+> 5. **¿Qué pasa si es usted quien cancela** porque la casa tuvo un desperfecto o se inundó? Lo habitual es devolver el 100% sin importar la fecha, y a veces compensar de alguna forma.
+>
+> 6. **¿Y si el huésped simplemente no llega** y nunca avisó? Suele tratarse distinto de una cancelación.
+
+### ⚠️ Un costo que probablemente no está contemplado
+
+**La comisión del procesador de pagos no se recupera al reembolsar.**
+
+Si un huésped pagó $20,600 MXN y se le devuelve el 100%, Stripe retiene su comisión (aprox. **3.6% + $3 MXN ≈ $745 MXN**). Ese dinero **no vuelve al negocio**: se perdió en el momento del cobro.
+
+Es decir: **cada cancelación con reembolso total cuesta dinero real**, aunque parezca una operación neutra.
+
+> 7. **¿Prefiere absorber esa comisión, o descontarla del reembolso al huésped?**
+
+Si decide descontarla, **tiene que estar escrito en la política antes de que nadie reserve**. Reembolsar menos de lo que el huésped espera, sin haberlo advertido, es una disputa de cargo casi segura — y una disputa cuesta más que la comisión.
+
+### Sobre los impuestos
+
+Los impuestos cobrados (IVA, ISH, DSA) corresponden a un hospedaje que no ocurrió. Lo razonable es devolverlos siempre e íntegros, incluso cuando el reembolso del alojamiento sea parcial — pero conviene **confirmarlo con el contador** junto con las preguntas de D5.
+
+### Un punto importante sobre cambiar la política después
+
+La política se **congela en el momento de reservar**. Si un huésped reservó bajo "cancelación gratuita hasta 7 días antes" y meses después la política se endurece, **ese huésped conserva las condiciones que aceptó**.
+
+Es deliberado y no es negociable desde lo técnico: cambiar la política retroactivamente equivaldría a modificar un acuerdo ya cerrado, y es fuente directa de disputas. La política nueva aplica solo a las reservas hechas a partir de ese momento.
+
+### Recomendación técnica
+
+**Políticas predefinidas asignables por casa** (modelo tipo Airbnb): se definen dos o tres políticas nombradas —flexible, moderada, estricta— y a cada casa se le asigna una. Si el cliente solo quiere una, se asigna la misma a todas y no estorba; si más adelante quiere diferenciar, ya está listo.
+
+**Valor por omisión para no bloquear el desarrollo:** política única "moderada" (100% con 7+ días, 50% entre 2 y 6, 0% con menos de 2), limpieza e impuestos reembolsables siempre, comisión absorbida por el negocio. Se ajusta con configuración cuando el cliente responda.
+
+### Qué se bloquea mientras no se responda
+
+El flujo de cancelación completo: pantalla del huésped, ejecución del reembolso contra Stripe o Mercado Pago, y liberación de fechas. **También obliga a una tabla nueva de reembolsos** — la de pagos actual no puede registrar devoluciones parciales, porque un reembolso no es "el pago cambió de estado", es un movimiento aparte con su propia referencia en el procesador.
+
+El desarrollo puede avanzar con el valor por omisión de arriba, pero **no debe salir a producción sin la política confirmada por escrito**: es lo que el huésped acepta al reservar.
+
+---
+
+## D8 — Textos legales: aviso de privacidad, términos y condiciones
+
+**Estado:** ⏳ Pendiente · ⚠️ **Bloquea el lanzamiento**
+
+### Por qué esto no puede dejarse para el final
+
+No es un trámite opcional. **Tres cosas que ya están decididas no se pueden activar sin estos documentos:**
+
+| Bloqueo | Consecuencia si falta |
+|---|---|
+| **Publicar la app de Google** (para "Continuar con Google") | Google exige una política de privacidad accesible. Sin publicarla, la app queda con un **tope de 100 usuarios** |
+| **Activar Stripe y Mercado Pago en producción** | Ambos exigen términos y condiciones y política de reembolso visibles antes de permitir cobros reales |
+| **Cumplimiento de la LFPDPPP** | El aviso de privacidad es obligatorio para tratar datos personales de huéspedes |
+
+El desarrollo construye las páginas, las traduce a los tres idiomas y registra qué versión aceptó cada huésped. **El contenido tiene que aportarlo el cliente o su abogado** — es responsabilidad legal de quien opera el negocio.
+
+### La pregunta concreta
+
+> ¿Tiene ya un aviso de privacidad y unos términos y condiciones? Si no, ¿cuenta con un abogado que los prepare? **Conviene pedírselos ahora, no la semana del lanzamiento**, porque sin ellos no se pueden activar los cobros reales ni el acceso con Google.
+
+### Qué deben cubrir (checklist derivada de lo que el sistema hace)
+
+Esta lista sale de las decisiones ya tomadas. Entregársela al abogado le ahorra tiempo y evita omisiones:
+
+**Aviso de privacidad — datos que se recogen y por qué:**
+
+- Nombre, correo, teléfono, documento de identidad y país del huésped.
+- **Inicio de sesión con Google:** se recibe nombre, correo verificado, foto e idioma. Implica que Google sabe que la persona usa este sitio.
+- **Chat con la administración:** los mensajes se conservan **12 meses** si no hubo reserva, y **5 años** si la conversación está vinculada a una reserva.
+- **Traducción automática:** las descripciones de las propiedades se procesan con DeepL, un servicio externo. (Las reseñas y los mensajes de chat **no** se envían a traducir.)
+- **Procesadores de pago:** Stripe y Mercado Pago reciben los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
+- **Imágenes y archivos** almacenados en Cloudflare R2.
+- **Correos automáticos** que se envían y cómo darse de baja de la solicitud de reseña.
+- Derechos ARCO: cómo ejercerlos y a qué correo.
+
+**Términos y condiciones:**
+
+- **La política de cancelación completa** (depende de **D7**). Si se decide descontar la comisión del procesador del reembolso, **tiene que estar escrito aquí antes de que nadie reserve** — reembolsar menos de lo esperado sin advertirlo es una disputa asegurada.
+- Qué ocurre si el huésped no se presenta.
+- Qué ocurre si cancela el anfitrión.
+- Número máximo de huéspedes y consecuencias de excederlo (relacionado con **D3**).
+- Horarios de entrada y salida.
+- Reglas de la casa: mascotas, fiestas, fumar.
+- Moneda de cobro y, si aplica, tipo de cambio (depende de **D1**).
+- Impuestos incluidos en el precio (depende de **D5**).
+
+### Detalle importante sobre el versionado
+
+Los documentos se **versionan por fecha** y cada reserva guarda **qué versión aceptó el huésped**. Es el mismo principio que congelar el precio y la política de cancelación: ante una disputa hay que poder demostrar qué condiciones estaban vigentes cuando esa persona reservó, no las de hoy.
+
+Esto significa que **cambiar los términos más adelante es seguro** — no afecta retroactivamente a quien ya reservó.
+
+### Qué se bloquea mientras no se responda
+
+El lanzamiento a producción, en tres frentes a la vez: cobros reales, acceso con Google más allá de 100 usuarios, y cumplimiento de protección de datos. El desarrollo puede avanzar por completo con textos de relleno, pero **no se puede salir a producción sin los definitivos**.
 
 ---
 

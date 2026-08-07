@@ -4,7 +4,7 @@
 ### 5.1 Tablas principales (con auditoría estándar: `created_at, updated_at, created_by, updated_by, deleted_at`)
 
 ```
--- ── Identidad y autenticación (detalle en 5.4) ──
+-- ── Identidad y autenticación (detalle en 5.6) ──
 users            (id, name, email UNIQUE, email_verified_at,
                    password NULL,          -- NULL en cuentas creadas por OAuth
                    role_id FK, locale, is_active, ...)
@@ -19,7 +19,18 @@ customers        (id, user_id FK NULL UNIQUE, first_name, last_name, email,
                   -- user_id NULL = reserva creada por el admin, sin cuenta
 
 properties       (id, name, slug, description, address, lat, lng,
-                   capacity, bedrooms, bathrooms, base_price, status, ...)
+                   capacity, bedrooms, bathrooms, base_price, status,
+                   rating DECIMAL(2,1) NULL, reviews_count INT DEFAULT 0, ...)
+                  -- rating y reviews_count: desnormalizados, ver 5.4
+
+favorites        (user_id FK, property_id FK, created_at)
+                  -- PRIMARY KEY (user_id, property_id); ver 5.8
+
+reviews          (id, booking_id FK UNIQUE, property_id FK, customer_id FK,
+                   rating TINYINT, comment TEXT NULL, language CHAR(2),
+                   host_reply TEXT NULL, host_replied_at,
+                   status ENUM(published,hidden), hidden_reason, hidden_by FK NULL,
+                   published_at, ...)
 
 property_images  (id, property_id FK, url, is_cover, order, alt_text)
 
@@ -57,15 +68,22 @@ availability     (id, property_id FK, date, status ENUM(available,blocked,booked
                   -- UNIQUE (property_id, date)
 
 bookings         (id, property_id FK, customer_id FK, checkin, checkout,
-                   guests, status ENUM(pending,confirmed,cancelled,completed),
+                   guests, status ENUM(pending,confirmed,cancelled,expired,completed),
+                   payment_method ENUM(card,oxxo,spei) NULL,
+                   expires_at DATETIME NULL,        -- ver 5.5
                    subtotal, discount_total, fees_total, taxes_total,
-                   total_price, currency, source, ...)
+                   total_price, currency, source,
+                   invoice_requested BOOLEAN DEFAULT 0, invoice_notes TEXT NULL,
+                   terms_version_accepted VARCHAR, terms_accepted_at DATETIME, ...)
+                  -- facturación: ver 5.7 · términos aceptados: ver 5.9
 
 booking_nights   (id, booking_id FK, date, price, season_id FK NULL, day_type)
                   -- snapshot congelado del precio noche por noche (sección 15.1)
 
-payments         (id, booking_id FK, provider ENUM(stripe,mercadopago),
+payments         (id, booking_id FK, provider ENUM(stripe,mercadopago,externo),
                    provider_ref, amount, currency, status, paid_at)
+                  -- 'externo': cobro fuera del sistema (efectivo, transferencia
+                  --            directa, o reserva previa al lanzamiento)
 
 -- ── Chat en tiempo real (detalle completo en sección 16) ──
 conversations    (id, customer_id FK, property_id FK NULL, booking_id FK NULL,
@@ -116,9 +134,82 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 
 **Estrategia anti doble-booking:** al crear una reserva, usar transacción + `SELECT ... FOR UPDATE` sobre las filas de `availability` del rango de fechas, o directamente intentar `INSERT` de esas fechas como `booked` y capturar el error de UNIQUE constraint si alguna ya existe. Esto es más robusto que solo validar con un `WHERE` antes del insert (condición de carrera).
 
+#### ⚠️ Supuesto: canal de venta único
+
+**Toda la estrategia anterior protege contra carreras *dentro de este sistema*.** No protege contra ventas en plataformas externas: si la misma casa estuviera publicada en Airbnb o Booking, alguien podría reservar allí y este sistema seguiría vendiendo esas noches, porque nadie le avisó.
+
+**Decisión: se asume canal único** — las casas se venden exclusivamente por este sitio. El cliente lo confirmó.
+
+Si ese supuesto cambia, la solución estándar es sincronización **iCal** en ambos sentidos:
+
+- **Exportar:** una URL `.ics` por propiedad que las plataformas externas consultan.
+- **Importar:** un job periódico que lee los `.ics` externos y bloquea esas fechas con un estado nuevo `blocked_external` en `availability` (distinto de `blocked`, para que el admin no lo pueda desbloquear a mano y provocar un choque).
+
+⚠️ Incluso con iCal, la sincronización **no es en tiempo real**: las plataformas refrescan cada 2–4 horas, así que queda una ventana de riesgo. La única alternativa de tiempo real son las APIs de partner de cada plataforma, que requieren aprobación comercial.
+
+**Costo de equivocarse en este supuesto: acotado.** iCal es aditivo —una tabla, un job y un estado más— y se estima en 30–45 h. No obliga a rehacer el motor de reservas, a diferencia de multi-divisa. Por eso asumir canal único es una apuesta de bajo riesgo.
+
 **Estrategia anti doble-canje de cupón:** el mismo patrón. Dentro de la **misma transacción** de la reserva, `SELECT ... FOR UPDATE` sobre la fila de `promotions` y verificar `used_count < usage_limit` **después** del lock, antes de incrementar. Validarlo en el `quote` no sirve: entre el quote y el pago pasan minutos.
 
-### 5.4 Identidad: `users` vs. `customers`
+### 5.4 Reseñas
+
+**Regla que sostiene todo el diseño: solo reseña quien se hospedó.** `reviews.booking_id` es FK **único** y la reserva debe estar en estado `completed`. Una estancia, una reseña.
+
+Eso elimina el spam **por diseño**, no por moderación. Sin cuenta con reserva completada no hay forma de escribir una reseña, así que no hace falta una cola de aprobación ni un administrador revisando texto.
+
+**Publicación automática, ocultación excepcional.** Las reseñas se publican solas. El admin puede **ocultar** una concreta (datos personales, insultos, confusión evidente), pero queda registrado quién lo hizo y por qué (`hidden_by`, `hidden_reason`) y la fila se conserva.
+
+⚠️ **Por qué no hay aprobación previa:** el dueño de las casas es también el dueño del sitio. Con moderación previa, tarde o temprano se rechazan las reseñas malas — y un listado donde todo son cinco estrellas no lo cree nadie. Las reseñas dejarían de aportar la confianza que justifica construirlas. La ocultación auditada da el control necesario sin invitar al sesgo sistemático.
+
+**Ventana para reseñar:** configurable en `configurations` (`reviews.window_days`, sugerido 30 días tras el `checkout`). Sin límite, aparecen reseñas de estancias de hace dos años que ya no describen la casa actual.
+
+#### `rating` y `reviews_count` desnormalizados
+
+Viven como columnas en `properties` y se recalculan con un listener al publicar u ocultar una reseña. **No se calculan con `AVG()` en cada consulta:** el listado público muestra decenas de tarjetas y cada una necesitaría una agregación — exactamente el coste que la sección 11 marca como problema de escalabilidad.
+
+`rating` es `NULL`, no `0`, cuando no hay reseñas. Son cosas distintas y la interfaz debe distinguirlas.
+
+⚠️ **Al lanzar no habrá ninguna reseña.** Nadie ha completado una estancia todavía. Mostrar "0.0 ★" o cinco estrellas vacías resta credibilidad justo al arrancar. La interfaz debe **omitir el bloque de calificación** cuando `reviews_count = 0`, no pintarlo en cero.
+
+#### Reseñas y multi-idioma
+
+Un huésped francés escribirá su reseña en francés. **No se traducen automáticamente:** el contenido generado por usuarios traducido a máquina cae en el mismo problema de política de spam de Google que se resolvió en D2 — y ahí sí no hay forma de que un humano revise cada reseña.
+
+Se guarda `reviews.language` con el idioma detectado y se muestra la reseña **en su idioma original**, etiquetada. Si se quiere ofrecer traducción, que sea a petición del lector y en el cliente, nunca contenido indexable.
+
+#### Reseñas y SEO
+
+Con reseñas reales se puede emitir `schema.org/AggregateRating` en las páginas de propiedad, lo que habilita **estrellas en los resultados de Google**. Es de las pocas mejoras de SEO con efecto visible inmediato en la tasa de clics, y encaja con la razón por la que el frontend público usa SSR.
+
+⚠️ Solo con reseñas verificadas. Emitir datos estructurados de calificaciones inventadas o sin respaldo es motivo de acción manual de Google.
+
+**Índices:** `reviews(booking_id)` UNIQUE, `reviews(property_id, status, published_at DESC)`, `reviews(customer_id)`.
+
+`property_id` está desnormalizado en `reviews` a propósito: permite listar las reseñas de una casa sin pasar por `bookings`.
+
+### 5.5 Expiración de reservas `pending`
+
+Una reserva sin pagar aparta fechas. **El plazo lo determina el medio de pago**, no un número elegido a ojo:
+
+| Medio | Plazo | Motivo |
+|---|---|---|
+| Tarjeta (Stripe / MP) | **30 minutos** | El cobro es inmediato; apartar más solo bloquea inventario |
+| **OXXO / SPEI** | **El vencimiento real de la referencia** que emite Mercado Pago (típicamente ~3 días) | La persona tiene que ir físicamente a la tienda |
+
+⚠️ **`expires_at` se deriva del vencimiento que devuelve el proveedor, no de una constante.** Si Mercado Pago emite una referencia válida 3 días y el sistema expira a las 48 h, alguien puede pagar en OXXO una reserva que ya se liberó — y quizá se revendió. Tomando la fecha del proveedor y añadiendo un pequeño margen, ese escenario deja de ser posible por construcción.
+
+**Job cada 5 minutos** (`ExpirePendingBookings`): busca `status = pending AND expires_at < now()`, y por cada una, dentro de una transacción:
+
+1. `SELECT ... FOR UPDATE` sobre la reserva y **releer su estado**.
+2. Si sigue `pending`: marcarla `expired`, liberar las filas de `availability` y decrementar `used_count` del cupón si lo hubo.
+
+⚠️ **El paso 1 no es opcional.** El webhook de pago y el job de expiración pueden ejecutarse en el mismo instante: el huésped paga justo cuando el plazo vence. Sin bloquear y releer, se cancela una reserva que acaba de pagarse. El webhook debe hacer la comprobación simétrica: si la reserva ya está `expired`, **no confirmarla** — hay que reembolsar y avisar.
+
+**`expired` es un estado propio, distinto de `cancelled`.** Nadie canceló nada: se agotó el plazo. Mezclarlos ensucia los reportes, porque una tasa de abandono en el checkout y una tasa de cancelación miden problemas distintos.
+
+**En la interfaz:** el huésped debe ver una cuenta regresiva del apartado. Un checkout que expira en silencio se percibe como un fallo del sitio, no como una regla.
+
+### 5.6 Identidad: `users` vs. `customers`
 
 Decisión: **una sola tabla de identidad (`users`) con rol, y `customers` como ficha del huésped.** Toda persona que inicia sesión —personal o huésped— vive en `users`. `customers` guarda los datos de contacto y facturación de quien reserva.
 
@@ -137,6 +228,63 @@ customers ──1:N─> bookings
 ⚠️ **`role_id` no es opcional en las consultas del panel.** Con huéspedes y personal en la misma tabla, cualquier listado de administración debe filtrar por rol. Un `User::all()` en una pantalla admin lista también a los huéspedes. Mitigación: un *global scope* o un modelo `Staff` con `where('role_id', '!=', guest)` de fábrica, en vez de confiar en que nadie lo olvide.
 
 **Índices adicionales:** `users(email)` UNIQUE, `customers(user_id)` UNIQUE, `customers(email)`, `social_accounts(provider, provider_user_id)` UNIQUE.
+
+### 5.7 Facturación (CFDI) — fuera del alcance inicial
+
+**Decisión: el sistema no timbra facturas.** El huésped que la necesite marca una casilla en el checkout, se levanta un aviso al admin y la factura se emite por fuera (portal del contador o del SAT), con los datos de la reserva.
+
+```
+bookings.invoice_requested  BOOLEAN
+bookings.invoice_notes      TEXT NULL     -- RFC y razón social si el huésped los deja
+```
+
+**Por qué no se integra un PAC ahora:**
+
+- El perfil de huésped es mayoritariamente **turista de Canadá y Estados Unidos, sin RFC**, que nunca pedirá factura. Facturar a extranjeros se resuelve con el RFC genérico `XEXX010101000`, pero es un caso aparte y de volumen bajo.
+- **CFDI 4.0 exige coincidencia exacta** de nombre, RFC, régimen fiscal y código postal del receptor contra la constancia de situación fiscal del SAT. Un dato mal capturado y el timbrado se rechaza. Automatizarlo obliga a pedir y validar esos cuatro campos **en el checkout** — fricción justo en la pantalla donde se decide la compra.
+- Arrastra cancelación de CFDI y notas de crédito por cada reembolso, encadenado a la política de cancelación (D7), que aún no está definida.
+- Con multi-divisa, el CFDI debe llevar la moneda de la operación y su tipo de cambio.
+
+**Ruta de actualización si el volumen lo justifica:** integrar un PAC (Facturama, SW Sapien, Finkok) con una tabla `invoices` que guarde `uuid_sat`, serie, folio, datos fiscales del receptor, `uso_cfdi`, moneda, tipo de cambio y las URL del XML y el PDF. Estimado 30–45 h. **No requiere migrar nada** de lo anterior — `invoice_requested` sigue siendo el disparador.
+
+⚠️ Confirmar con el contador (duda **D5**) cuántas facturas se emiten al mes. Si son muchas, esta decisión debe revisarse antes del lanzamiento: emitirlas a mano es trabajo que crece con las ventas.
+
+### 5.8 Favoritos
+
+```
+favorites (user_id FK, property_id FK, created_at)
+           PRIMARY KEY (user_id, property_id)   -- impide duplicados sin código extra
+```
+
+Persisten en servidor, así que sobreviven al cambio de dispositivo: alguien explora en el móvil y reserva desde la computadora encontrando lo que guardó.
+
+**El motivo de fondo para llevarlos a base de datos es la señal de demanda.** Una casa que se guarda mucho y se reserva poco está diciendo algo — gusta, pero algo la frena: precio, fotos o disponibilidad. Ese dato solo existe si los favoritos se almacenan del lado del servidor, y alimenta `GET /admin/reports/favorites`.
+
+#### ⚠️ El visitante anónimo
+
+Requerir sesión introduce un problema de experiencia: alguien que está explorando pulsa el corazón y se topa con "inicia sesión". Interrumpir a un visitante por una función secundaria puede costar más de lo que aporta.
+
+**Manejo obligatorio, no opcional:**
+
+1. Al pulsar el corazón sin sesión, guardar la intención en `localStorage` y abrir el modal de acceso (con el botón de Google visible — son dos clics).
+2. Tras iniciar sesión, **aplicar automáticamente** el favorito pendiente y quedarse en la misma página.
+
+Sin el paso 1, el visitante inicia sesión, vuelve, y la casa que quería guardar no está marcada. Se pierde la intención justo después de haber pagado el costo de registrarse — que es la peor combinación posible.
+
+**Índice:** la clave primaria compuesta ya cubre la consulta por usuario. Para el reporte de demanda, `favorites(property_id)`.
+
+### 5.9 Aceptación de términos
+
+```
+bookings.terms_version_accepted   VARCHAR    -- ej. "2026-08-01"
+bookings.terms_accepted_at        DATETIME
+```
+
+Cada reserva registra **qué versión de los términos aceptó el huésped y cuándo**. Los documentos legales se versionan por fecha y las versiones anteriores se conservan accesibles.
+
+**Es el mismo principio que el precio congelado (15.1) y la política de cancelación congelada (D7):** ante una disputa por una cancelación, hay que poder demostrar qué condiciones estaban vigentes **en el momento de reservar**, no las de hoy. Sin este registro, cambiar los términos reescribe retroactivamente lo que cada huésped aceptó — que es justo lo que una disputa pone a prueba.
+
+Las páginas viven en `/legal/{privacidad,terminos,cookies}`, en los tres idiomas, enlazadas desde el pie de página y desde el checkout. **El contenido lo aporta el cliente o su abogado** (duda **D8**); el desarrollo construye la estructura, el versionado y el registro de aceptación.
 
 ⚠️ **Traslape de temporadas:** MySQL 8 no tiene *exclusion constraints* sobre rangos de fechas (PostgreSQL sí, con `EXCLUDE USING gist`). Por eso el traslape de `seasons` se valida en la capa de aplicación (FormRequest) y la ambigüedad restante se resuelve con la regla determinista de prioridad de la sección 15.3 — nunca se deja al azar del orden de consulta.
 

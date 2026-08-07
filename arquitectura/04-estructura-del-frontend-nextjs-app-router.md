@@ -11,6 +11,10 @@ src/
 │   │   │   └── [slug]/
 │   │   │       ├── page.tsx          # Detalle (SSR/ISR)
 │   │   │       └── BookingWidget.tsx # Client Component
+│   │   ├── legal/
+│   │   │   ├── privacidad/page.tsx   # exigido por Google OAuth y LFPDPPP
+│   │   │   ├── terminos/page.tsx     # exigido por Stripe y Mercado Pago
+│   │   │   └── cookies/page.tsx
 │   │   └── layout.tsx
 │   ├── (admin)/
 │   │   ├── dashboard/

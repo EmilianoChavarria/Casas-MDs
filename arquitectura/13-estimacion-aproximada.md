@@ -24,10 +24,13 @@ Las filas marcadas ⏳ dependen de una duda abierta en [`dudas-cliente.md`](../d
 | **Chat en tiempo real (Reverb + bandeja admin)** | **40–56** | **Alta** | Media | Infra WebSocket en producción (proxy, timeouts, Supervisor), reconexión y duplicados en el cliente |
 | Auth y permisos del panel ⏳ **D6** | 12–16 | Baja-Media | Alta | — |
 | **Auth de huéspedes + Google OAuth** | 12–16 | Media | Alta | Vinculación de cuentas por correo (*account takeover* si se omite `email_verified`) |
+| **Reseñas y favoritos** (secciones 5.4 y 5.8) | 14–20 | Media | Media | Recálculo de `rating` desnormalizado; datos estructurados de SEO solo con reseñas reales |
+| **Notificaciones al huésped** (sección 19) | 12–18 | Media | Alta | 7 plantillas × 3 idiomas; los textos dependen del cliente |
+| Páginas legales + aceptación versionada ⏳ **D8** | 4–6 | Baja | **Alta** | Bloquea publicar la app de Google y activar cobros reales |
 | Reportes | 12–20 | Media | Baja-Media | Consultas agregadas costosas; normalizar 3 monedas |
 | Seguridad/hardening | 12–16 | Media | Alta | — |
 | Despliegue producción | 12–16 | Media | Alta | Primer deploy real, subdominio WebSocket |
-| **Total estimado** | **~438–600 h** | | | (**~11–15 semanas** a tiempo completo, una persona) |
+| **Total estimado** | **~468–644 h** | | | (**~12–16 semanas** a tiempo completo, una persona) |
 
 ---
 

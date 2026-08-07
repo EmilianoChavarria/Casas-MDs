@@ -46,6 +46,24 @@ POST   /api/v1/webhooks/stripe
 POST   /api/v1/webhooks/mercadopago
 ```
 
+### Reseñas (sección 5.4)
+```
+GET    /api/v1/properties/{slug}/reviews?page=      # público, solo published
+POST   /api/v1/bookings/{id}/review                 # solo el huésped, reserva completed
+PUT    /api/v1/reviews/{id}                         # editar dentro de la ventana
+GET    /api/v1/me/reviews                           # reseñas del huésped autenticado
+
+GET    /api/v1/me/favorites                         # favoritos del huésped
+POST   /api/v1/me/favorites/{propertyId}
+DELETE /api/v1/me/favorites/{propertyId}
+
+POST   /api/v1/admin/reviews/{id}/reply             # respuesta del anfitrión
+PATCH  /api/v1/admin/reviews/{id}/hide              # { reason } — nunca borra la fila
+PATCH  /api/v1/admin/reviews/{id}/unhide
+```
+
+`POST /bookings/{id}/review` valida tres cosas: que la reserva sea del huésped autenticado, que esté en estado `completed`, y que esté dentro de `reviews.window_days` desde el `checkout`. El `UNIQUE` sobre `booking_id` impide la segunda reseña sin necesidad de comprobarlo en código.
+
 ### Chat (sección 16)
 ```
 GET    /api/v1/conversations                                # las del usuario autenticado
@@ -96,6 +114,7 @@ PATCH                 /api/v1/admin/conversations/{id}/close
 GET                   /api/v1/admin/reports/occupancy
 GET                   /api/v1/admin/reports/revenue
 GET                   /api/v1/admin/reports/promotions      # descuento otorgado por promoción
+GET                   /api/v1/admin/reports/favorites       # señal de demanda: guardadas vs. reservadas
 ```
 
 `POST /admin/pricing/preview` es deliberado: deja al admin ver el efecto de una temporada nueva sobre los próximos 12 meses **antes** de guardarla. Un error de configuración de precios es caro y silencioso.

@@ -29,6 +29,8 @@ Este README es solo el **índice**. El contenido está dividido en dos bloques: 
 | 15 | Motor de precios: temporadas y promociones | [`15-motor-de-precios-temporadas-y-promociones.md`](arquitectura/15-motor-de-precios-temporadas-y-promociones.md) |
 | 16 | Chat en tiempo real (WebSockets) | [`16-chat-en-tiempo-real-websockets.md`](arquitectura/16-chat-en-tiempo-real-websockets.md) |
 | 17 | Sistema de diseño del frontend | [`17-sistema-de-diseno-frontend.md`](arquitectura/17-sistema-de-diseno-frontend.md) |
+| 18 | Estrategia de pruebas | [`18-estrategia-de-pruebas.md`](arquitectura/18-estrategia-de-pruebas.md) |
+| 19 | Notificaciones al huésped | [`19-notificaciones-al-huesped.md`](arquitectura/19-notificaciones-al-huesped.md) |
 
 ---
 

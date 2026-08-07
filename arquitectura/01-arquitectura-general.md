@@ -3,7 +3,9 @@
 
 ### 1.1 Visión
 
-No es un marketplace: es un **sistema propietario de gestión y venta de inventario de casas de una sola empresa**, similar a un motor de reservas hotelero (channel manager simplificado) más un frontend público tipo Airbnb.
+No es un marketplace: es un **sistema propietario de gestión y venta de inventario de casas de una sola empresa**, similar a un motor de reservas hotelero más un frontend público tipo Airbnb.
+
+⚠️ **Canal de venta único.** Las casas se venden exclusivamente por este sitio, no en Airbnb, Booking ni otras plataformas. Es un supuesto confirmado con el cliente y sostiene toda la estrategia anti doble-booking de la sección 5: sin canales externos, este sistema es la única fuente de verdad de la disponibilidad. **No es un "channel manager"** — si algún día se publica en plataformas externas, hace falta sincronización iCal (ver 5.3).
 
 Arquitectura: **Backend API-first (Laravel) + Frontend desacoplado (Next.js)**, comunicándose por REST/JSON sobre HTTPS. SSR/ISR en Next.js para SEO de las páginas públicas de propiedades.
 

@@ -193,4 +193,4 @@ php artisan tinker
 
 El error más común es `redirect_uri_mismatch`: el URI registrado en Google y el de `.env` difieren en el esquema (`http`/`https`), en el puerto o en una barra final.
 
-Referenciado desde: `../arquitectura/`, secciones 5.4, 6 y **7.1.1**.
+Referenciado desde: `../arquitectura/`, secciones 5.6, 6 y **7.1.1**.
