@@ -3,11 +3,35 @@
 
 ### Auth
 ```
+POST   /api/v1/auth/register                # faltaba: alta de huésped
 POST   /api/v1/auth/login
 POST   /api/v1/auth/logout
 GET    /api/v1/auth/me
 POST   /api/v1/auth/refresh
+POST   /api/v1/auth/forgot-password
+POST   /api/v1/auth/reset-password
+POST   /api/v1/auth/email/verify/{id}/{hash}
 ```
+
+### Auth con Google (OAuth)
+```
+GET    /api/v1/auth/google/redirect?redirect_to=/profile   # inicia el flujo
+GET    /api/v1/auth/google/callback                        # retorno de Google
+POST   /api/v1/auth/google/link                            # vincular (autenticado)
+DELETE /api/v1/auth/google/unlink                          # desvincular
+```
+
+**Flujo completo** (Next.js desacoplado + Laravel API):
+
+1. El navegador va a `GET /auth/google/redirect` — no es fetch, es navegación real.
+2. Socialite redirige a Google con `state` (CSRF).
+3. Google retorna a `/auth/google/callback`.
+4. Laravel verifica, crea o vincula el `user`, y **abre sesión de Sanctum (cookie)**.
+5. Redirige a `NEXT_PUBLIC_APP_URL + redirect_to`.
+
+⚠️ **`redirect_to` debe validarse contra una lista blanca de rutas relativas.** Aceptar cualquier URL convierte el endpoint en un *open redirect*: `?redirect_to=https://sitio-falso.com` manda al usuario a una página de phishing **desde tu propio dominio**, con la confianza que eso implica. Solo se aceptan rutas que empiecen con `/` y no con `//`.
+
+⚠️ **Cookie entre subdominios:** si Next.js vive en `midominio.com` y la API en `api.midominio.com`, hace falta `SESSION_DOMAIN=.midominio.com` y `SANCTUM_STATEFUL_DOMAINS` con ambos. Sin eso el callback abre sesión y el frontend no la ve.
 
 ### Público
 ```

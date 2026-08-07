@@ -1,17 +1,28 @@
 # Servicio: Google Maps Platform
 
+> ✅ **Alcance reducido (decisión de la sección 17.9).** Este servicio **ya no cubre los mapas visibles**. Los mapas públicos van con Leaflet + un proveedor de tiles ([`13-mapas-tiles.md`](13-mapas-tiles.md)), porque son la superficie de mayor volumen y menor exigencia, y su costo de salida es una línea de código.
+>
+> De Google Maps Platform se usa **únicamente Places Autocomplete**, y solo en el formulario admin de alta/edición de propiedades. **No contratar hasta la fase 3 del roadmap** — así no queda una API key olvidada sin restricciones.
+
 ## ¿Para qué se usa?
 
-1. Mostrar la ubicación exacta de cada propiedad en su página de detalle (mapa embebido).
-2. Autocompletar direcciones al crear/editar una propiedad en el dashboard admin (Places Autocomplete).
-3. Opcionalmente, mapa de búsqueda con pines de todas las propiedades disponibles.
+1. **Places Autocomplete** al crear/editar una propiedad en el dashboard admin: autocompletar la dirección y obtener `lat`/`lng` precisos.
+
+~~2. Mapa embebido en la página de detalle~~ → Leaflet ([`13-mapas-tiles.md`](13-mapas-tiles.md))
+~~3. Mapa de búsqueda con pines~~ → Leaflet ([`13-mapas-tiles.md`](13-mapas-tiles.md))
 
 
 ## Justificación
 
-Estándar del mercado para geolocalización, mejor cobertura y precisión en México que alternativas gratuitas (OpenStreetMap requiere más esfuerzo de mantenimiento aunque es gratis — considerarlo solo si el presupuesto es muy ajustado).
+Estándar del mercado para geocodificación, con mejor cobertura y precisión de direcciones en México que las alternativas gratuitas — sobre todo en zonas rurales y turísticas, que es justo donde suelen estar las casas de renta vacacional.
 
-**Alternativa gratuita:** Mapbox o Leaflet + OpenStreetMap si se quiere evitar el costo de Google, con menor precisión de geocodificación en zonas rurales.
+**Por qué solo para el autocompletado:** el alta de propiedades es una pantalla interna que se usa una vez por casa y casi nunca se edita — volumen mínimo, muy por debajo de cualquier free tier. Pero la exigencia de precisión es alta: un `lat`/`lng` mal capturado es un huésped perdido buscando la casa de noche. Es el reparto inverso al del mapa público, y por eso cada superficie usa un proveedor distinto.
+
+**Alternativa descartada:** Nominatim (geocodificador de OpenStreetMap). Es un servicio donado con límite de 1 petición/segundo y política de uso restrictiva — la misma fragilidad que los tiles públicos de OSM — y con peor cobertura de direcciones en México.
+
+⚠️ **Riesgo principal a controlar — facturación de Places.** Places Autocomplete cobra **por sesión** solo si se implementan *session tokens*. Sin ellos factura **cada pulsación de tecla**, que es la causa clásica de facturas inesperadas en un formulario que se usa diez veces al mes. Dos medidas obligatorias:
+> 1. Usar `AutocompleteSessionToken` en cada sesión de captura.
+> 2. Restringir la API key por **HTTP referrer** a los dominios exactos de producción y staging, y limitarla a la API de Places únicamente.
 
 
 ## 💰 Precio y plan gratuito para desarrollo

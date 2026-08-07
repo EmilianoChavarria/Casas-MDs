@@ -4,6 +4,8 @@
 
 Este README es solo el **índice**. El contenido está dividido en dos bloques: la arquitectura del sistema (carpeta [`arquitectura/`](arquitectura/)) y los servicios externos contratables (un `.md` por servicio, en [`servicios/`](servicios/)).
 
+> ❓ **[`dudas-cliente.md`](dudas-cliente.md)** — decisiones pendientes que dependen del negocio, no de lo técnico. Cada una con contexto, opciones y qué se bloquea mientras no se resuelva.
+
 ---
 
 ## 📐 Arquitectura — [`arquitectura/`](arquitectura/)
@@ -26,6 +28,7 @@ Este README es solo el **índice**. El contenido está dividido en dos bloques: 
 | 14 | Buenas prácticas aplicadas | [`14-buenas-practicas-aplicadas.md`](arquitectura/14-buenas-practicas-aplicadas.md) |
 | 15 | Motor de precios: temporadas y promociones | [`15-motor-de-precios-temporadas-y-promociones.md`](arquitectura/15-motor-de-precios-temporadas-y-promociones.md) |
 | 16 | Chat en tiempo real (WebSockets) | [`16-chat-en-tiempo-real-websockets.md`](arquitectura/16-chat-en-tiempo-real-websockets.md) |
+| 17 | Sistema de diseño del frontend | [`17-sistema-de-diseno-frontend.md`](arquitectura/17-sistema-de-diseno-frontend.md) |
 
 ---
 
@@ -42,8 +45,10 @@ Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justif
 | 05 | Pagos — Stripe | [`05-pagos-stripe.md`](servicios/05-pagos-stripe.md) | ✅ Sandbox gratis e ilimitado |
 | 06 | Pagos — Mercado Pago | [`06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md) | ✅ Usuarios de prueba gratis |
 | 07 | Correo Transaccional — Resend / Amazon SES | [`07-correo-transaccional.md`](servicios/07-correo-transaccional.md) | ✅ Resend free permanente ⚠️ SES solo 12 meses |
-| 08 | Google Maps Platform | [`08-google-maps.md`](servicios/08-google-maps.md) | ✅ 10,000 llamadas gratis/API/mes (plan Essentials) |
+| 08 | Google Maps — solo Places Autocomplete (admin) | [`08-google-maps.md`](servicios/08-google-maps.md) | ✅ 10,000 llamadas gratis/API/mes (plan Essentials) |
 | 09 | Cloudflare — DNS, CDN, WAF | [`09-cloudflare-dns-cdn.md`](servicios/09-cloudflare-dns-cdn.md) | ✅ Plan Free permanente |
 | 10 | Monitoreo de Errores — Sentry | [`10-sentry-monitoreo.md`](servicios/10-sentry-monitoreo.md) | ✅ Plan Developer gratis permanente |
 | 11 | Registro de Dominio | [`11-dominio.md`](servicios/11-dominio.md) | ❌ Nunca (no se necesita para desarrollar) |
 | 12 | WebSockets / Tiempo Real — Laravel Reverb | [`12-websockets-reverb.md`](servicios/12-websockets-reverb.md) | ✅ Self-hosted gratis (no requiere cuenta externa) |
+| 13 | Tiles de mapa — MapTiler / Stadia / Geoapify | [`13-mapas-tiles.md`](servicios/13-mapas-tiles.md) | ✅ Free tier con API key ⚠️ tiles públicos de OSM solo en local |
+| 14 | Autenticación con Google (OAuth 2.0) | [`14-auth-google-oauth.md`](servicios/14-auth-google-oauth.md) | ✅ Gratis siempre, sin cuota ⚠️ publicar la app o tope de 100 usuarios |

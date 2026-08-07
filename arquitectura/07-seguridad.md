@@ -5,6 +5,28 @@
 
 **Recomendado: Sanctum.** Para un frontend propio (Next.js, mismo dominio/subdominios) Sanctum con cookies SPA es más simple y seguro (httpOnly cookie, no expones el token a JS, protección CSRF nativa). JWT solo aportaría valor si tuvieras múltiples clientes desacoplados (apps móviles de terceros, microservicios externos) — no es el caso aquí. Si más adelante agregas app móvil nativa, puedes usar tokens personales de Sanctum (Bearer) sin migrar a JWT.
 
+### 7.1.1 Autenticación con Google (OAuth) — reglas obligatorias
+
+Se integra **Laravel Socialite** con scopes no sensibles (`openid`, `email`, `profile`). Costo $0 y sin proceso de verificación de Google — ver [`servicios/14-auth-google-oauth.md`](../servicios/14-auth-google-oauth.md).
+
+Estas cinco reglas no son recomendaciones; omitir cualquiera abre una vía de apropiación de cuentas:
+
+| # | Regla | Qué pasa si se omite |
+|---|---|---|
+| 1 | **Verificar el claim `email_verified` de Google antes de vincular por correo.** Si viene `false`, no vincular: pedir confirmación por correo | Un atacante crea una cuenta en un proveedor con el correo de la víctima y entra como ella. Es el vector clásico de *account takeover* por OAuth |
+| 2 | **Rechazar login con contraseña si `users.password IS NULL`** — cuentas creadas por OAuth | Comparar contra `null` tiene comportamiento indefinido según la implementación; en el peor caso una contraseña vacía valida |
+| 3 | **Validar `redirect_to` contra lista blanca**: solo rutas relativas que empiecen con `/` y no con `//` | *Open redirect*: `?redirect_to=https://sitio-falso.com` envía al usuario a phishing **desde tu dominio**, heredando su credibilidad |
+| 4 | **No permitir desvincular Google si es el único método de acceso.** Exigir establecer contraseña primero | El usuario se queda fuera de su propia cuenta, sin forma de recuperarla salvo soporte manual |
+| 5 | **Conservar el `state` de OAuth** (Socialite lo hace, no desactivarlo) y aplicar `throttle` al callback | Sin `state`, un atacante puede forzar que la víctima vincule *su* cuenta de Google a la sesión del atacante |
+
+**Sobre la vinculación automática por correo.** Con Google el `email_verified` es fiable —verifica tanto Gmail como Workspace— así que vincular automáticamente cuando coincide el correo *y* el claim es `true` es aceptable y evita cuentas duplicadas. Pero el claim **se lee, no se asume**. La regla general: *nunca confiar en un correo que el proveedor no declare verificado.*
+
+**Cuentas OAuth y verificación de correo:** un usuario creado por Google llega con el correo ya verificado por Google, así que `email_verified_at` se marca en el momento. No se le manda correo de verificación — sería redundante y añade fricción justo donde OAuth la estaba quitando.
+
+**Separación de roles:** un usuario con rol `guest` nunca debe pasar `EnsureUserIsAdmin`, aunque su cuenta se haya creado por Google. El proveedor de identidad autentica *quién eres*, no *qué puedes hacer*.
+
+**Privacidad:** usar OAuth implica que Google conoce que la persona usa este sitio. Debe declararse en el aviso de privacidad del cliente.
+
 ### 7.2 Checklist de seguridad
 
 | Área | Recomendación concreta |

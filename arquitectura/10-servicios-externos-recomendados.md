@@ -12,7 +12,9 @@ Cada servicio tiene su propio README con: para qué se usa, justificación, prec
 | **Stripe** | Pagos con tarjeta internacional | [`servicios/05-pagos-stripe.md`](../servicios/05-pagos-stripe.md) |
 | **Mercado Pago** | Pagos locales MX: tarjetas nacionales, OXXO, SPEI | [`servicios/06-pagos-mercadopago.md`](../servicios/06-pagos-mercadopago.md) |
 | **Correo (Resend / SES)** | Confirmaciones y notificaciones transaccionales | [`servicios/07-correo-transaccional.md`](../servicios/07-correo-transaccional.md) |
-| **Google Maps** | Ubicación de propiedades, autocompletado de dirección | [`servicios/08-google-maps.md`](../servicios/08-google-maps.md) |
+| **Tiles de mapa (MapTiler/Stadia/Geoapify)** | Mapas públicos con Leaflet: resultados de búsqueda y detalle de propiedad | [`servicios/13-mapas-tiles.md`](../servicios/13-mapas-tiles.md) |
+| **Google Maps** | **Solo** Places Autocomplete en el alta de propiedades del admin (ver sección 17.9) | [`servicios/08-google-maps.md`](../servicios/08-google-maps.md) |
+| **Google OAuth** | "Continuar con Google" en registro e inicio de sesión del huésped | [`servicios/14-auth-google-oauth.md`](../servicios/14-auth-google-oauth.md) |
 | **Cloudflare (DNS/CDN/WAF)** | DNS, CDN, protección DDoS, SSL | [`servicios/09-cloudflare-dns-cdn.md`](../servicios/09-cloudflare-dns-cdn.md) |
 | **Sentry** | Monitoreo de errores frontend/backend | [`servicios/10-sentry-monitoreo.md`](../servicios/10-sentry-monitoreo.md) |
 | **Dominio** | Registro y gestión del dominio propio | [`servicios/11-dominio.md`](../servicios/11-dominio.md) |
@@ -20,7 +22,9 @@ Cada servicio tiene su propio README con: para qué se usa, justificación, prec
 
 **Sugerencia de pago:** si el mercado objetivo es mexicano, usar Mercado Pago como primario y Stripe como secundario para turistas internacionales.
 
-**Orden de contratación sugerido:** 1) Dominio → 2) Cloudflare (DNS) → 3) VPS (Hetzner) → 4) R2 (mismo panel de Cloudflare) → 5) Stripe/Mercado Pago → 6) Resend → 7) Google Maps → 8) Sentry. Este orden evita bloqueos (ej. no puedes verificar dominio en Resend sin tener antes el DNS en Cloudflare).
+**Orden de contratación sugerido:** 1) Dominio → 2) Cloudflare (DNS) → 3) VPS (Hetzner) → 4) R2 (mismo panel de Cloudflare) → 5) Stripe/Mercado Pago → 6) Resend → 7) Tiles de mapa → 8) Sentry → 9) Google Maps (**hasta la fase 3**, cuando se construya el alta de propiedades). Este orden evita bloqueos (ej. no puedes verificar dominio en Resend sin tener antes el DNS en Cloudflare).
+
+**Google Maps va al final a propósito:** solo se necesita para el autocompletado del formulario admin. Crear la cuenta antes deja una API key sin uso y sin restricciones dando vueltas — el escenario exacto de la factura sorpresa.
 
 **Reverb no se contrata:** es un paquete del propio Laravel, self-hosted en el VPS ya pagado. No añade costo recurrente ni cuenta externa — solo el subdominio `ws.midominio.com` en el DNS de Cloudflare (paso 2) y el proceso bajo Supervisor. Pusher/Ably quedan documentados como plan B, no contratados.
 

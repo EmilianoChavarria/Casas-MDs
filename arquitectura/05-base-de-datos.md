@@ -4,10 +4,19 @@
 ### 5.1 Tablas principales (con auditoría estándar: `created_at, updated_at, created_by, updated_by, deleted_at`)
 
 ```
-users            (id, name, email, password, role_id, is_active, ...)
-roles            (id, name, slug)
+-- ── Identidad y autenticación (detalle en 5.4) ──
+users            (id, name, email UNIQUE, email_verified_at,
+                   password NULL,          -- NULL en cuentas creadas por OAuth
+                   role_id FK, locale, is_active, ...)
+roles            (id, name, slug)          -- admin, staff, guest
 
-customers        (id, first_name, last_name, email, phone, document_id, country, ...)
+social_accounts  (id, user_id FK, provider ENUM(google), provider_user_id,
+                   email, avatar_url, created_at)
+                  -- UNIQUE (provider, provider_user_id)
+
+customers        (id, user_id FK NULL UNIQUE, first_name, last_name, email,
+                   phone, document_id, country, locale, ...)
+                  -- user_id NULL = reserva creada por el admin, sin cuenta
 
 properties       (id, name, slug, description, address, lat, lng,
                    capacity, bedrooms, bathrooms, base_price, status, ...)
@@ -108,6 +117,26 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 **Estrategia anti doble-booking:** al crear una reserva, usar transacción + `SELECT ... FOR UPDATE` sobre las filas de `availability` del rango de fechas, o directamente intentar `INSERT` de esas fechas como `booked` y capturar el error de UNIQUE constraint si alguna ya existe. Esto es más robusto que solo validar con un `WHERE` antes del insert (condición de carrera).
 
 **Estrategia anti doble-canje de cupón:** el mismo patrón. Dentro de la **misma transacción** de la reserva, `SELECT ... FOR UPDATE` sobre la fila de `promotions` y verificar `used_count < usage_limit` **después** del lock, antes de incrementar. Validarlo en el `quote` no sirve: entre el quote y el pago pasan minutos.
+
+### 5.4 Identidad: `users` vs. `customers`
+
+Decisión: **una sola tabla de identidad (`users`) con rol, y `customers` como ficha del huésped.** Toda persona que inicia sesión —personal o huésped— vive en `users`. `customers` guarda los datos de contacto y facturación de quien reserva.
+
+```
+users ──1:0..1──> customers          (customers.user_id, nullable y único)
+users ──1:N─────> social_accounts    (proveedores OAuth vinculados)
+customers ──1:N─> bookings
+```
+
+**Por qué `customers.user_id` es nullable — y es la razón principal de este diseño:** el admin puede dar de alta una reserva de alguien que llamó por teléfono. Se crea el `customer` sin `user`. Si esa persona más adelante entra con Google usando el mismo correo, **se vincula a su ficha existente y ve su historial de reservas**. Con un modelo donde huésped y cuenta son lo mismo, esa reserva telefónica quedaría huérfana para siempre.
+
+**Por qué `users.password` es nullable:** una cuenta creada con "Continuar con Google" nunca tuvo contraseña. Guardar un hash falso o una cadena vacía es peor — ver las reglas de la sección 7.3.
+
+**Por qué `social_accounts` es tabla y no una columna `users.google_id`:** permite vincular varios proveedores a la misma cuenta y añadir Apple o Facebook después sin migrar. `UNIQUE (provider, provider_user_id)` impide que dos cuentas locales reclamen la misma identidad de Google.
+
+⚠️ **`role_id` no es opcional en las consultas del panel.** Con huéspedes y personal en la misma tabla, cualquier listado de administración debe filtrar por rol. Un `User::all()` en una pantalla admin lista también a los huéspedes. Mitigación: un *global scope* o un modelo `Staff` con `where('role_id', '!=', guest)` de fábrica, en vez de confiar en que nadie lo olvide.
+
+**Índices adicionales:** `users(email)` UNIQUE, `customers(user_id)` UNIQUE, `customers(email)`, `social_accounts(provider, provider_user_id)` UNIQUE.
 
 ⚠️ **Traslape de temporadas:** MySQL 8 no tiene *exclusion constraints* sobre rangos de fechas (PostgreSQL sí, con `EXCLUDE USING gist`). Por eso el traslape de `seasons` se valida en la capa de aplicación (FormRequest) y la ambigüedad restante se resuelve con la regla determinista de prioridad de la sección 15.3 — nunca se deja al azar del orden de consulta.
 

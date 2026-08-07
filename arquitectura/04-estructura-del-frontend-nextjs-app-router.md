@@ -29,7 +29,15 @@ src/
 │   ├── layout.tsx
 │   └── middleware.ts                 # Protección de rutas admin
 ├── components/
-│   ├── ui/                           # botones, inputs, modal (design system)
+│   ├── ui/                           # design system propio — tokens y componentes en sección 17
+│   │   ├── Input.tsx                 # unificado (el prototipo lo duplica en 4 páginas)
+│   │   ├── Field.tsx
+│   │   ├── Row.tsx
+│   │   ├── SectionHeading.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── StatusBadge.tsx
+│   │   ├── StarRating.tsx
+│   │   └── LanguageSelector.tsx
 │   ├── property/
 │   │   ├── PropertyCard.tsx
 │   │   ├── PropertyGallery.tsx
@@ -75,8 +83,11 @@ src/
 │   ├── pricing.ts                    # NightPrice, Quote, Season, Promotion
 │   └── chat.ts
 └── styles/
-    └── globals.css                   # Tailwind
+    └── globals.css                   # Tailwind + body + CSS de Leaflet
 ```
+
+**Base visual:** los tokens (paleta `lagoon`/`coral`/`sand`, Poppins + Inter, sombras `card`/`pop`), el inventario de componentes y el checklist de migración desde el prototipo están en la **sección 17**. El `tailwind.config.js` del prototipo se adopta como contrato visual sin cambios.
+
 
 **Decisiones:**
 - **Server Components** para listado/detalle público (SEO, menos JS al cliente).
@@ -84,6 +95,8 @@ src/
 - **Zustand** sobre Redux: menor boilerplate, suficiente para el estado del admin (filtros, carrito de reserva, estado del chat).
 - `apiClient.ts` centraliza baseURL, manejo de tokens y refresh, y parseo de errores.
 - **El frontend nunca calcula precios.** Muestra el `QuoteDTO` que devuelve el backend. Duplicar la lógica de temporadas en TypeScript garantiza que algún día el total mostrado difiera del cobrado.
+- **Fuentes con `next/font/google`**, nunca `@import` de Google Fonts en CSS: autoalojado, sin petición a terceros y sin salto de layout (sección 17.4).
+- **Mapas con import dinámico y `ssr: false`** — Leaflet accede a `window` al importarse y rompe el render de servidor.
 - **Una sola instancia de Echo** para toda la app. Suscribirse en `useEffect` y **desuscribirse en el cleanup** (`echo.leave(...)`): en dev, StrictMode monta dos veces y sin cleanup los mensajes salen duplicados en pantalla.
 - Si el WebSocket cae, `useConversation` degrada a polling cada 10 s y al reconectar pide `?after_id=<último visto>` — el WS no reenvía lo perdido.
 

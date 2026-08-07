@@ -73,7 +73,7 @@ Sin los headers `Upgrade` y `Connection`, el handshake WebSocket falla con un 40
 
 - **SSL:** Certbot con renovación automática (cron) o terminación en Cloudflare. Incluir `ws.midominio.com` en el certificado.
 - **Variables de entorno:** `.env` nunca en el repo; usar GitHub Secrets para inyectarlas en CI/CD (igual que ya haces en tu pipeline de `notasCreditos`). Generar credenciales de Reverb **distintas** para producción.
-- **Cron:** `php artisan schedule:run` cada minuto (reportes, limpieza de reservas `pending` expiradas, extensión diaria del horizonte de `price_calendar`, purga de conversaciones cerradas antiguas).
+- **Cron:** `php artisan schedule:run` cada minuto (reportes, limpieza de reservas `pending` expiradas, extensión diaria del horizonte de `price_calendar`, purga de conversaciones según la política de retención diferenciada de la sección 16.8.1, actualización diaria del tipo de cambio).
 - **Queue workers + Supervisor:** ya tienes experiencia directa con esto (Reverb/queue:work); mismo patrón aquí para `queue:work` de emails, webhooks de pago y recálculo del calendario de precios.
 - **Proceso Reverb bajo Supervisor:** `autorestart=true`, `numprocs=1`. Si el proceso muere, el chat deja de entregar en vivo (aunque los mensajes se siguen guardando por HTTP) — conviene una alerta sobre ese proceso, no solo sobre el contenedor de la app.
 

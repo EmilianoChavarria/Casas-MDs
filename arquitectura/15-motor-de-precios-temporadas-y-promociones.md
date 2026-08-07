@@ -59,6 +59,39 @@ Reglas invariantes:
 
 Los pasos 1–3 producen el **precio por noche** (lo que se muestra en el calendario). Los pasos 4–6 solo existen a nivel de la estancia completa.
 
+#### ⚠️ Estado de cada paso
+
+Tres pasos del pipeline **todavía no tienen modelo de datos**. Están en el diseño del cálculo pero no en el esquema, y dependen de decisiones que no son técnicas:
+
+| Paso | Estado | Bloqueado por |
+|---|---|---|
+| 1. Temporada | ✅ Modelado (`seasons`, `season_property`) | — |
+| 2. Tipo de día | ✅ Modelado (`price_rules`, `holidays`) | — |
+| **3. Ajuste por ocupación** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D3** — ¿se cobra por huésped adicional? |
+| **4. Descuento por estancia larga** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D4** — ¿hay descuento semanal/mensual? |
+| 5. Promociones | ✅ Modelado (`promotions`, `promotion_redemptions`) | — |
+| **6. Cargos e impuestos** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D5** — base de cálculo (contador) |
+
+**No implementar el pipeline hasta cerrar los tres.** `PricingService` es la autoridad única del precio (15.1) y añadirle pasos después obliga a revisar el congelado de reservas, las promociones y los reportes. Es el módulo marcado de mayor riesgo en la sección 13 justamente por esto.
+
+Mientras tanto, los pasos 3, 4 y 6 se pueden dejar como **operaciones neutras** (cargo extra en cero, descuento en cero, sin impuestos) para no bloquear el desarrollo del resto — pero el sistema **no debe salir a producción así**: un total sin IVA, ISH y DSA no es un error de software, es un problema fiscal.
+
+#### Cargos vs. impuestos — por qué van separados (paso 6)
+
+| | **Cargos** (limpieza, huésped extra, mascota) | **Impuestos** (IVA, ISH, DSA) |
+|---|---|---|
+| De quién es el dinero | **Del negocio.** Es ingreso | **De nadie.** Está en tránsito al fisco |
+| Quién fija el monto | El cliente, criterio comercial | Ley federal, estatal o municipal |
+| En los reportes de la sección 13 | Suma a ingresos | **No suma.** Es un pasivo |
+
+Mezclarlos hace que el reporte de ingresos declare dinero que en realidad se debe entregar. Es un error contable, no de presentación.
+
+**La limpieza va por estancia, no por noche** (se limpia una vez, al final). Eso tiene un efecto de negocio deliberado: `$1,200` sobre 2 noches son `+$600/noche` efectivos, y sobre 10 noches solo `+$120`. Una limpieza cara desincentiva estancias cortas sin necesidad de imponer un mínimo de noches.
+
+⚠️ **Un depósito en garantía no es un cargo.** Es un retenido reembolsable: entra y sale. Modelarlo como cargo infla los ingresos.
+
+⚠️ **Los impuestos no se pueden modelar como una constante.** En Quintana Roo aplican tres cargas y una de ellas —el DSA— es un **monto fijo por noche**, no un porcentaje: no se obtiene de multiplicar el subtotal por nada. Cualquier diseño con `taxes_total = subtotal × 0.16` es incapaz de representarla. Hacen falta impuestos configurables con al menos dos tipos de cálculo (porcentaje y monto fijo por noche) y tasas editables sin desplegar, porque cambian por decreto y varían por estado.
+
 ---
 
 ### 15.3 Temporadas (`seasons`)
@@ -140,12 +173,45 @@ price_rules (
 **Qué cuenta como fin de semana es configurable**, no está hardcodeado. Vive en `configurations`:
 
 ```
-key: pricing.weekend_days      value: [5,6]     # viernes y sábado (ISO-8601: 1=lunes)
-key: pricing.rounding          value: "nearest_10"
-key: pricing.currency          value: "MXN"
+key: pricing.weekend_days      value: [5,6]     # ✅ DECIDIDO: viernes y sábado (ISO-8601: 1=lunes)
+key: pricing.rounding          value: "none"    # ✅ DECIDIDO: 2 decimales, sin redondeo comercial
+key: pricing.currency          value: "MXN"     # moneda base del sistema
 ```
 
-En México la noche cara suele ser viernes y sábado (el huésped se va el domingo), no sábado-domingo. Dejarlo en config evita una migración cuando el negocio cambie de opinión.
+#### ⚠️ Se evalúa la noche, no el día del calendario
+
+Una noche se fecha por el día en que **entra**: la "noche del viernes" es la que se duerme viernes→sábado. `DayTypeResolver` recibe la fecha de la noche, no la de salida.
+
+La estancia típica de fin de semana es **llegada viernes, salida domingo** = dos noches, viernes y sábado. La noche del domingo casi no se vende: el huésped ya se fue.
+
+```
+   Lun   Mar   Mié   Jue   Vie   Sáb   Dom
+                            ▓▓▓   ▓▓▓
+                           +20%  +20%
+```
+
+Configurar `[6,7]` (sábado y domingo, el fin de semana del calendario) es el error clásico: cobra recargo por la noche más vacía de la semana y deja la del viernes —la más demandada— a precio base. No produce ningún error visible; simplemente se pierde ingreso, y solo se detecta meses después revisando ocupación contra tarifa.
+
+Se descartó incluir el jueves: encarecería noches cuya demanda real todavía no está medida. Cuando existan datos de ocupación, cambiar a `[4,5,6]` es editar una fila de `configurations` — por eso está en config y no en el código.
+
+**Puentes y días festivos no van aquí.** Se resuelven con la tabla `holidays`, que tiene prioridad sobre `weekend`.
+
+#### Precisión y redondeo — ✅ DECIDIDO: sin redondeo comercial
+
+Todos los importes son `DECIMAL(10,2)` y se redondean **únicamente a 2 decimales** (redondeo hacia arriba en el medio, *half-up*), que es la precisión natural del dinero. No se aplica redondeo a decenas ni a múltiplos de 50.
+
+| Regla | Valor |
+|---|---|
+| Dónde se redondea | En cada noche, al calcularla |
+| A qué precisión | 2 decimales |
+| Modo | *Half-up* (2,942.505 → 2,942.51) |
+| Impuestos | Se calculan sobre el subtotal ya redondeado, también a 2 decimales |
+
+**Consecuencia deseada:** la suma de las noches cuadra exacta con el subtotal. Como cada noche ya está a 2 decimales, `4 × 2,942.50 = 11,770.00` sin residuo. No aparece la discrepancia clásica entre "precio por noche × noches" y el total mostrado.
+
+**Consecuencia asumida:** los precios se ven calculados, no comerciales (`$2,942.50` en vez de `$2,940`). Es una decisión tomada a conciencia: se prioriza que los ajustes de temporada y las promociones se reflejen exactos por encima de la estética de la tarifa. Un `+20%` configurado es exactamente `+20%` en el cobro y en los reportes.
+
+⚠️ **Con multi-divisa hay un segundo redondeo.** El cálculo se hace íntegro en la moneda base (MXN), se redondea a 2 decimales, y **después** se convierte a la moneda de presentación, donde se vuelve a redondear a 2 decimales. Nunca al revés: convertir primero y calcular sobre la moneda destino hace que el mismo `+20%` dé resultados distintos según la moneda. El modelo exacto de tipo de cambio está pendiente de decisión del cliente — ver [`dudas-cliente.md`](../dudas-cliente.md) D1.
 
 **`holiday`** se resuelve contra una tabla `holidays (id, date, name, country)` sembrada con los días festivos oficiales. Un día festivo gana sobre `weekend`, y `weekend` sobre `weekday`.
 
@@ -267,18 +333,26 @@ El `QuoteDTO` devuelve `nights[]`, `subtotal`, `discounts[]`, `fees[]`, `taxes`,
       { "date": "2026-12-25", "base_price": 2500, "price": 4290, "season": "Navidad",         "day_type": "holiday" },
       { "date": "2026-12-26", "base_price": 2500, "price": 3900, "season": "Temporada alta",  "day_type": "weekend" }
     ],
-    "subtotal": 15990,
+    "subtotal": 15990.00,
     "discounts": [
-      { "code": "VERANO26", "label": "Promo 10%", "amount": -1599 }
+      { "code": "VERANO26", "label": "Promo 10%", "amount": -1599.00 }
     ],
-    "fees":  [ { "label": "Limpieza", "amount": 800 } ],
-    "taxes": { "label": "IVA 16%", "amount": 2334.56 },
-    "total": 17525.56,
+    "fees":  [ { "label": "Limpieza", "amount": 1200.00, "basis": "per_stay" } ],
+    "taxes": [
+      { "label": "IVA 16%", "type": "percent",         "amount": 2494.56 },
+      { "label": "ISH 3%",  "type": "percent",         "amount":  467.73 },
+      { "label": "DSA",     "type": "fixed_per_night", "amount":  144.00 }
+    ],
+    "total": 18697.29,
     "currency": "MXN",
     "min_nights_required": 3
   }
 }
 ```
+
+`taxes` es un **arreglo**, no un objeto único: hay tres cargas simultáneas y el huésped debe verlas desglosadas para poder facturar. El `type` viaja en la respuesta porque el frontend no puede deducir de dónde salen $144 que no son un porcentaje de nada (`fixed_per_night` × 4 noches).
+
+⚠️ Los importes de este ejemplo asumen que los impuestos se calculan sobre noches + limpieza y que el DSA es por casa. **Ambas suposiciones están pendientes de confirmación del contador** — ver [`dudas-cliente.md`](../dudas-cliente.md) D5.
 
 ⚠️ El quote **no** aparta fechas ni consume el cupón. Es solo cálculo. El apartado ocurre en `POST /bookings`.
 
@@ -293,7 +367,9 @@ El `QuoteDTO` devuelve `nights[]`, `subtotal`, `discounts[]`, `fees[]`, `taxes`,
 | Traslape con la misma prioridad | Debe rechazarse en la validación, no producir precio ambiguo |
 | Doble canje de cupón con `usage_limit = 1` | Dos requests concurrentes: solo una debe confirmarse |
 | Precio congelado | Cambiar temporada tras confirmar: la reserva conserva su total |
-| Redondeo | Sumar noches redondeadas ≠ redondear la suma; definir cuál y ser consistente |
+| Redondeo | La suma de noches debe cuadrar **exacta** con el subtotal (cada noche ya está a 2 decimales, no debe quedar residuo) |
+| Noche vs. día del calendario | Una estancia vie→dom debe generar recargo en **2** noches (vie y sáb), no en 1 ni en 3 |
+| Multi-divisa | Calcular en MXN → redondear → convertir → redondear. Verificar que el mismo `+20%` dé el mismo porcentaje en las tres monedas |
 | DST / zona horaria | Todas las fechas de estancia son `DATE`, nunca `DATETIME` con zona |
 
 ---

@@ -266,7 +266,39 @@ REVERB_SERVER_PORT=8080
 | Adjuntos maliciosos | Mismo pipeline de imágenes de la sección 7: `mimes:jpg,png,webp,pdf`, `max:5120`, reprocesado antes de subir a R2, URL firmada con expiración |
 | Fuga de datos personales | No permitir que el chat cambie estados de reserva ni pagos; es solo mensajería |
 | `guest_token` filtrado | UUID v4, cookie `httpOnly` + `Secure` + `SameSite=Lax`, expira a los 30 días, se invalida al vincular la cuenta |
-| Retención | Purga de conversaciones `closed` con más de 24 meses vía `schedule:run` (política de datos personales) |
+
+#### 16.8.1 Retención de conversaciones — ✅ DECIDIDO: diferenciada por tipo
+
+No todas las conversaciones valen lo mismo. Una consulta de alguien que nunca reservó es dato personal sin contrapartida operativa; el hilo de una reserva real es evidencia.
+
+| Tipo | Criterio | Retención | Por qué |
+|---|---|---|---|
+| **Sin reserva** (`booking_id IS NULL`) | Interesado que preguntó y nunca reservó | **12 meses** desde el último mensaje | Sin valor operativo pasado un ciclo anual completo de temporadas. Conservarlo solo acumula dato personal expuesto |
+| **Con reserva** (`booking_id NOT NULL`) | Hilo vinculado a una estancia | **5 años** desde el `checkout` | Alineado con la conservación de comprobantes fiscales. Es la evidencia de lo acordado ante una disputa, un contracargo o una reclamación tardía |
+
+```php
+// Job: PurgeOldConversations (schedule:run diario)
+Conversation::query()
+    ->where('status', 'closed')
+    ->where(function ($q) {
+        $q->whereNull('booking_id')
+          ->where('last_message_at', '<', now()->subMonths(12));
+    })
+    ->orWhere(function ($q) {
+        $q->whereNotNull('booking_id')
+          ->whereHas('booking', fn ($b) => $b->where('checkout', '<', now()->subYears(5)));
+    })
+    ->chunkById(500, fn ($rows) => $rows->each->forceDelete());
+```
+
+Ambos plazos viven en `configurations` (`chat.retention_months_orphan`, `chat.retention_years_booked`), no en el código: es una política que puede cambiar sin desplegar.
+
+⚠️ **La purga es borrado real (`forceDelete`), no *soft delete***. Un `deleted_at` no cumple una política de retención de datos personales — el dato sigue ahí. Los adjuntos en R2 se borran en el mismo job; si no, quedan huérfanos y accesibles por URL.
+
+⚠️ **Anonimizar en vez de borrar no es alternativa aquí.** Sustituir nombre, correo y teléfono en las columnas deja intacto el cuerpo de los mensajes, donde el huésped escribe su propio teléfono, su número de vuelo o su dirección. Daría cumplimiento aparente sin cumplimiento real.
+
+⚠️ **Consistencia con el aviso de privacidad.** Estos plazos deben coincidir con lo que declare el aviso de privacidad del cliente. Si el aviso dice otra cosa, manda el aviso — ajustar la configuración, no al revés.
+| Retención | Política diferenciada por tipo de conversación — ver 16.8.1 |
 
 ---
 

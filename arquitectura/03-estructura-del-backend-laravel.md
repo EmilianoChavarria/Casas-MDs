@@ -44,7 +44,9 @@ app/
 │   │       │   ├── CustomerController.php
 │   │       │   └── ReportController.php
 │   │       ├── Auth/
-│   │       │   └── AuthController.php
+│   │       │   ├── AuthController.php          # register, login, logout, me
+│   │       │   ├── PasswordResetController.php
+│   │       │   └── SocialAuthController.php    # redirect, callback, link, unlink
 │   │       ├── Chat/
 │   │       │   ├── ConversationController.php
 │   │       │   └── MessageController.php
@@ -107,6 +109,8 @@ app/
 │   ├── Availability.php
 │   ├── Payment.php
 │   ├── AuditLog.php
+│   ├── Role.php
+│   ├── SocialAccount.php
 │   └── User.php
 ├── Notifications/
 │   ├── BookingConfirmedNotification.php

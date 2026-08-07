@@ -10,6 +10,8 @@
 | **Sanctum (elegido sobre JWT)** | Ver sección 7.1 | — |
 | **S3/R2** | R2 es más barato (sin egress fees) y compatible con API S3; recomendado si el tráfico de imágenes es alto | Preferencia: **Cloudflare R2** |
 | **Redis** | Cache de catálogos + colas de trabajo (necesario para no bloquear el request en emails/pagos) | Ninguno |
+| **Leaflet + react-leaflet** (mapas públicos) | Ya implementado en el prototipo; costo de salida mínimo (cambiar de proveedor de tiles es una línea). El mapa público es alto volumen y baja exigencia — no justifica pagar Google. Ver sección 17.9 | Los **tiles** sí requieren un proveedor con API key en producción; el servidor público de OSM prohíbe el uso comercial |
+| **Google Places** (solo autocompletado admin) | Precisión de direcciones en México, superior a Nominatim; volumen mínimo (una alta por casa) muy por debajo del free tier | Obligatorio usar *session tokens* y restringir la key por dominio, o la facturación se dispara |
 | **Docker + Docker Compose** | Reproducibilidad entre local/dev/prod | Ninguno |
 | **GitHub Actions** | Ya lo usas en tu pipeline de `notasCreditos`, reutilizable | Ninguno |
 | **VPS (Hetzner recomendado)** | Mejor relación costo/rendimiento que DigitalOcean para este tamaño de proyecto | Hetzner > DO > Hostinger |
