@@ -10,7 +10,14 @@
 | Área | Recomendación concreta |
 |---|---|
 | Roles y permisos | Tabla `roles` + policies de Laravel; opcionalmente `spatie/laravel-permission` si necesitas permisos granulares por módulo |
-| Rate limiting | `throttle:api` en rutas públicas (ej. 60/min), más estricto en `/auth/login` (5/min) para evitar fuerza bruta |
+| Rate limiting | `throttle:api` en rutas públicas (ej. 60/min), más estricto en `/auth/login` (5/min) para evitar fuerza bruta, en `/conversations/{id}/messages` (30/min, anti-flood) y en `/promotions/validate` (10/min, evita enumerar códigos por fuerza bruta) |
+| Canales WebSocket | Siempre `private`/`presence`, **nunca públicos** — un canal público lo lee cualquiera que adivine el ID. Autorización en `routes/channels.php` validando `customer_id` contra el usuario de Sanctum; `/broadcasting/auth` protegido por la misma sesión (sección 16.5) |
+| Secretos de Reverb | `REVERB_APP_KEY` sí va al frontend; `REVERB_APP_SECRET` **jamás** — todo lo prefijado `NEXT_PUBLIC_` queda visible en el bundle |
+| Contenido del chat | Guardar texto plano y renderizar como texto en React; `body` máx. 2,000 caracteres; adjuntos por el mismo pipeline validado de imágenes, con URL firmada y expiración |
+| Acceso de visitante al chat | `guest_token` UUID v4 en cookie `httpOnly` + `Secure` + `SameSite=Lax`, expira a 30 días y se invalida al vincular la cuenta |
+| Manipulación de precios | El precio **nunca** se acepta desde el cliente. `POST /bookings` recalcula el total en el servidor con `PricingService` e ignora cualquier importe enviado en el request (sección 15.1) |
+| Abuso de cupones | `usage_limit` verificado con `SELECT ... FOR UPDATE` dentro de la transacción de reserva, más `usage_limit_per_customer` contra `promotion_redemptions` (sección 15.5) |
+| Cambios de precios y promociones | Auditar en `audit_logs` toda alta/edición de `seasons`, `price_rules` y `promotions` — es dinero, y un cambio silencioso es difícil de rastrear después |
 | CSRF | Sanctum lo maneja automático en rutas SPA con cookies; API pura con Bearer no lo requiere |
 | XSS | Next.js escapa por defecto; nunca usar `dangerouslySetInnerHTML` con contenido de usuario sin sanitizar |
 | SQL Injection | Eloquent/Query Builder parametrizado siempre; nunca concatenar SQL crudo |

@@ -24,6 +24,8 @@ Este README es solo el **índice**. El contenido está dividido en dos bloques: 
 | 12 | Roadmap por fases | [`12-roadmap-por-fases.md`](arquitectura/12-roadmap-por-fases.md) |
 | 13 | Estimación aproximada | [`13-estimacion-aproximada.md`](arquitectura/13-estimacion-aproximada.md) |
 | 14 | Buenas prácticas aplicadas | [`14-buenas-practicas-aplicadas.md`](arquitectura/14-buenas-practicas-aplicadas.md) |
+| 15 | Motor de precios: temporadas y promociones | [`15-motor-de-precios-temporadas-y-promociones.md`](arquitectura/15-motor-de-precios-temporadas-y-promociones.md) |
+| 16 | Chat en tiempo real (WebSockets) | [`16-chat-en-tiempo-real-websockets.md`](arquitectura/16-chat-en-tiempo-real-websockets.md) |
 
 ---
 
@@ -44,3 +46,4 @@ Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justif
 | 09 | Cloudflare — DNS, CDN, WAF | [`09-cloudflare-dns-cdn.md`](servicios/09-cloudflare-dns-cdn.md) | ✅ Plan Free permanente |
 | 10 | Monitoreo de Errores — Sentry | [`10-sentry-monitoreo.md`](servicios/10-sentry-monitoreo.md) | ✅ Plan Developer gratis permanente |
 | 11 | Registro de Dominio | [`11-dominio.md`](servicios/11-dominio.md) | ❌ Nunca (no se necesita para desarrollar) |
+| 12 | WebSockets / Tiempo Real — Laravel Reverb | [`12-websockets-reverb.md`](servicios/12-websockets-reverb.md) | ✅ Self-hosted gratis (no requiere cuenta externa) |

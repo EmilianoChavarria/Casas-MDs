@@ -33,16 +33,49 @@ services:
     build: ./docker/php
     command: php artisan queue:work --tries=3
     depends_on: [app, redis]
+  reverb:
+    build: ./docker/php
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    depends_on: [app, redis]
+    expose: ["8080"]
+    restart: unless-stopped
 volumes:
   mysql_data:
 ```
 
-### 8.3 Otros puntos operativos
+### 8.3 Proxy WebSocket (Nginx)
 
-- **SSL:** Certbot con renovación automática (cron) o terminación en Cloudflare.
-- **Variables de entorno:** `.env` nunca en el repo; usar GitHub Secrets para inyectarlas en CI/CD (igual que ya haces en tu pipeline de `notasCreditos`).
-- **Cron:** `php artisan schedule:run` cada minuto (reportes, limpieza de reservas `pending` expiradas).
-- **Queue workers + Supervisor:** ya tienes experiencia directa con esto (Reverb/queue:work); mismo patrón aquí para `queue:work` de emails y webhooks de pago.
+El chat en tiempo real (sección 16) necesita un subdominio propio, `ws.midominio.com`, apuntando al proceso Reverb:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name ws.midominio.com;
+
+    location / {
+        proxy_pass          http://reverb:8080;
+        proxy_http_version  1.1;
+        proxy_set_header    Upgrade $http_upgrade;
+        proxy_set_header    Connection "upgrade";
+        proxy_set_header    Host $host;
+        proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto $scheme;
+        proxy_read_timeout  60s;
+    }
+}
+```
+
+Sin los headers `Upgrade` y `Connection`, el handshake WebSocket falla con un 400 y el cliente cae en reconexión infinita — es el error más común al desplegar Reverb detrás de un proxy.
+
+⚠️ **Cloudflare** soporta WebSockets con el proxy naranja activo, pero corta conexiones inactivas (100 s en plan Free). El cliente debe mantener `ping/pong` activo.
+
+### 8.4 Otros puntos operativos
+
+- **SSL:** Certbot con renovación automática (cron) o terminación en Cloudflare. Incluir `ws.midominio.com` en el certificado.
+- **Variables de entorno:** `.env` nunca en el repo; usar GitHub Secrets para inyectarlas en CI/CD (igual que ya haces en tu pipeline de `notasCreditos`). Generar credenciales de Reverb **distintas** para producción.
+- **Cron:** `php artisan schedule:run` cada minuto (reportes, limpieza de reservas `pending` expiradas, extensión diaria del horizonte de `price_calendar`, purga de conversaciones cerradas antiguas).
+- **Queue workers + Supervisor:** ya tienes experiencia directa con esto (Reverb/queue:work); mismo patrón aquí para `queue:work` de emails, webhooks de pago y recálculo del calendario de precios.
+- **Proceso Reverb bajo Supervisor:** `autorestart=true`, `numprocs=1`. Si el proceso muere, el chat deja de entregar en vivo (aunque los mensajes se siguen guardando por HTTP) — conviene una alerta sobre ese proceso, no solo sobre el contenedor de la app.
 
 ---
 
