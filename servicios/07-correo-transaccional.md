@@ -9,6 +9,14 @@ Envío de correos transaccionales: confirmación de reserva, cancelación, recor
 
 **Recomendación:** iniciar con Resend por simplicidad; migrar a SES solo si el volumen de correos crece mucho (miles diarios) y el costo se vuelve relevante.
 
+## 💰 Precio y plan gratuito para desarrollo
+| Proveedor | Plan gratuito | ¿Sirve para pruebas de desarrollo? |
+|---|---|---|
+| **Resend** | Free tier **permanente**: 3,000 correos/mes (100/día), 1 dominio, sin tarjeta de crédito | ✅ Sí — de sobra para todo el desarrollo y hasta para el arranque en producción |
+| **Amazon SES** | 3,000 mensajes/mes gratis, pero **solo los primeros 12 meses** en cuentas AWS creadas antes de jul-2025; cuentas nuevas reciben en su lugar $200 USD de crédito general de AWS | ⚠️ Parcial — no es gratis a largo plazo, requiere salir del modo Sandbox y verificar dominio incluso para pruebas |
+
+**Recomendación:** usar Resend en desarrollo (free tier permanente, cero fricción) y evaluar SES solo si el volumen de producción lo justifica económicamente.
+
 ## Ruta de creación (Resend)
 1. Crear cuenta en https://resend.com
 2. **Domains → Add Domain** (ej. `midominio.com`).
@@ -23,8 +31,8 @@ Envío de correos transaccionales: confirmación de reserva, cancelación, recor
 4. Crear credenciales IAM específicas con permiso `ses:SendEmail` únicamente (principio de mínimo privilegio).
 
 ## Contrato / plan recomendado
-- **Resend:** tier gratuito 3,000 correos/mes (100/día); plan Pro desde $20 USD/mes por 50,000 correos.
-- **Amazon SES:** $0.10 USD por 1,000 correos enviados (sin tier gratuito permanente fuera de instancias EC2), extremadamente barato a volumen alto.
+- **Resend:** tier gratuito permanente 3,000 correos/mes (100/día); plan Pro desde $20 USD/mes por 50,000 correos; sin descuento por pago anual.
+- **Amazon SES:** $0.10 USD por 1,000 correos enviados tras agotar el tier gratuito de los primeros 12 meses (o el crédito de bienvenida en cuentas nuevas); extremadamente barato a volumen alto, pero requiere salir del Sandbox de AWS.
 
 ## Configuración
 

@@ -6,6 +6,14 @@ Captura y alerta en tiempo real de excepciones/errores no manejados tanto en el 
 ## Justificación
 Sin esto, los errores en producción solo se detectan si un usuario los reporta o revisando logs manualmente. Sentry permite detectar y priorizar bugs antes de que se conviertan en un problema de soporte, y correlaciona errores de frontend y backend en un mismo proyecto.
 
+## 💰 Precio y plan gratuito para desarrollo
+| Plan | Costo | ¿Sirve para dev/arranque en solitario? |
+|---|---|---|
+| **Developer** | $0/mes, **permanente**, sin tarjeta de crédito | ✅ Sí — 5,000 errores/mes, 10,000 unidades de performance/mes, 1 usuario, retención de 30 días; cubre perfectamente el desarrollo y el arranque mientras el proyecto lo mantenga una sola persona |
+| **Team** | $26 USD/mes (anual) | Necesario cuando se suma más de una persona al equipo o se supera el volumen de eventos gratis |
+
+**Recomendación:** usar el plan Developer desde el día uno del proyecto; no hace falta pagar nada hasta que haya más de un desarrollador dando mantenimiento o el volumen de errores lo justifique.
+
 ## Ruta de creación
 1. Crear cuenta en https://sentry.io/signup
 2. Crear una **Organization** (ej. `renta-casas`).
@@ -24,8 +32,8 @@ Sin esto, los errores en producción solo se detectan si un usuario los reporta 
    ```
 
 ## Contrato / plan recomendado
-- **Plan Developer (gratuito):** 5,000 errores/mes, 1 usuario, retención 30 días — suficiente para el arranque del proyecto.
-- **Plan Team ($26 USD/mes):** más eventos, más usuarios del equipo, alertas avanzadas — considerar cuando haya más de una persona dando mantenimiento o el volumen de errores supere el tier gratuito.
+- **Plan Developer (gratuito, permanente):** 5,000 errores/mes, 10,000 unidades de performance/mes, 1 usuario, retención 30 días — suficiente para el arranque del proyecto.
+- **Plan Team ($26 USD/mes, facturación anual):** más eventos, más usuarios del equipo, alertas avanzadas — considerar cuando haya más de una persona dando mantenimiento o el volumen de errores supere el tier gratuito.
 
 ## Configuración
 

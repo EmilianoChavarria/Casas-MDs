@@ -9,6 +9,14 @@
 ## Justificación
 Es prácticamente obligatorio en este stack porque R2 (almacenamiento) requiere una cuenta de Cloudflare de todas formas (ver `04-almacenamiento-r2.md`); consolidar DNS + CDN + WAF en el mismo proveedor simplifica la operación y es gratuito en su plan base.
 
+## 💰 Precio y plan gratuito para desarrollo
+| Plan | Costo | ¿Sirve para dev/producción inicial? |
+|---|---|---|
+| **Free** | $0/mes, **de forma permanente** (no es una prueba con límite de tiempo) | ✅ Sí — incluye DNS, CDN, SSL, protección DDoS L3/L4 y WAF gestionado básico; suficiente para desarrollo y para el arranque en producción |
+| **Pro** | $20 USD/mes (facturación anual) o $25 USD/mes (mensual) | Solo necesario al escalar (reglas WAF avanzadas, mejor caché de imágenes) |
+
+**Recomendación:** quedarse en el plan Free indefinidamente hasta que el tráfico o los requisitos de seguridad justifiquen el salto a Pro — no hace falta pagar nada para desarrollo ni para el lanzamiento inicial.
+
 ## Ruta de creación
 1. Crear cuenta en https://dash.cloudflare.com/sign-up (si no se creó ya para R2).
 2. **Add a site** → ingresar `midominio.com`.
@@ -29,8 +37,8 @@ Es prácticamente obligatorio en este stack porque R2 (almacenamiento) requiere 
 11. **Speed → Optimization** → activar Auto Minify y Brotli.
 
 ## Contrato / plan recomendado
-- **Plan Free:** $0/mes — incluye DNS, CDN básico, SSL, protección DDoS L3/L4, WAF gestionado limitado. Suficiente para el arranque del proyecto.
-- **Plan Pro ($25 USD/mes):** reglas WAF más avanzadas, mejor caché de imágenes, útil al escalar (fase de 10,000+ usuarios, sección 11 del doc principal).
+- **Plan Free:** $0/mes, permanente — incluye DNS, CDN básico, SSL, protección DDoS L3/L4, WAF gestionado limitado. Suficiente para el arranque del proyecto.
+- **Plan Pro:** $20 USD/mes facturado anual, o $25 USD/mes facturado mensualmente — reglas WAF más avanzadas, mejor caché de imágenes, útil al escalar (fase de 10,000+ usuarios, sección 11 del doc principal).
 
 ## Configuración adicional
 

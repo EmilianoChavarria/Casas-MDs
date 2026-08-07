@@ -10,6 +10,16 @@ Método de pago complementario a Stripe (ver `05-pagos-stripe.md`), orientado al
 
 **Recomendación de uso combinado:** mostrar ambos métodos en el `BookingForm` del frontend y dejar que el cliente elija; internamente, `PaymentService` decide qué proveedor invocar según el método seleccionado (patrón Strategy).
 
+## 💰 Precio y plan gratuito para desarrollo
+Mercado Pago tampoco cobra por mes ni por probar:
+
+| Modo | Costo | ¿Sirve para pruebas de desarrollo? |
+|---|---|---|
+| **Credenciales de Test + Usuarios de prueba** (panel de developers) | $0, sin límite de tiempo | ✅ Sí — se crean "usuarios de prueba" (comprador y vendedor ficticios) para simular el flujo completo de pago, incluyendo webhooks, sin mover dinero real |
+| **Producción** | Sin costo fijo mensual; solo comisión por transacción real (ver abajo) | Solo al activar cuenta en producción |
+
+**Recomendación:** usar credenciales de Test (`TEST-...`) durante todo el desarrollo; cambiar a credenciales de Producción (`APP_USR-...`) solo al lanzar.
+
 ## Ruta de creación
 1. Crear cuenta en https://www.mercadopago.com.mx (o vincular una existente).
 2. Completar activación de cuenta de vendedor: datos fiscales (RFC), cuenta CLABE para depósitos.
@@ -22,8 +32,10 @@ Método de pago complementario a Stripe (ver `05-pagos-stripe.md`), orientado al
 
 ## Contrato / condiciones
 - Sin costo fijo mensual.
-- Comisión estándar aproximada: **3.5%–4.99% + IVA** por transacción con tarjeta (varía según modalidad de cobro y si es pago en una sola exhibición o diferido; confirmar tarifa vigente en el panel de "Costos" antes de operar).
-- OXXO/efectivo: comisión adicional fija por transacción (verificar en el panel, suele rondar los $10–12 MXN).
+- **Checkout Pro / Link de pago** (tarjeta o SPEI): ~**3.49% + $4 MXN** por transacción con acreditación instantánea, + IVA (16%) sobre la comisión (tarifas ago-2026, confirmar vigentes en el panel de "Costos" antes de operar, ya que Mercado Pago las ajusta con frecuencia).
+- **Código QR** (cobro en persona): 0.99%, sin cargo fijo — la opción más económica si aplica al negocio.
+- **Transferencias SPEI**: gratis.
+- OXXO/efectivo: comisión adicional fija por transacción (verificar en el panel).
 - Depósito de fondos: puede ser inmediato (con costo) o en 14 días hábiles (sin costo adicional) — configurable en el dashboard.
 - Revisar Términos y Condiciones en https://www.mercadopago.com.mx/ayuda/terminos-y-politicas_194 antes de activar cuenta en producción.
 

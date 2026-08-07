@@ -15,6 +15,14 @@ Almacena todo el modelo relacional del sistema: propiedades, reservas, disponibi
 
 **Recomendación:** iniciar self-hosted en Docker dentro del mismo VPS de Hetzner (ver `01-hosting-vps.md`) y migrar a un servicio gestionado cuando se llegue a la fase de escalado (sección 11 del doc principal, >10,000 usuarios).
 
+## 💰 Precio y plan gratuito para desarrollo
+| Opción | Costo | ¿Sirve para pruebas de desarrollo? |
+|---|---|---|
+| **Self-hosted (Docker local o en el VPS)** | $0 | ✅ Sí, 100% gratis e ilimitado en el tiempo — es la opción recomendada para todo el desarrollo |
+| **DigitalOcean Managed MySQL** | Desde $15 USD/mes, sin plan gratuito propio | ⚠️ Parcial — no tiene free tier permanente, pero cuentas nuevas de DigitalOcean reciben ~$200 USD en créditos (60 días), suficientes para probar el servicio gestionado sin pagar de tu bolsillo |
+
+**Recomendación:** no hay razón para pagar una base de datos gestionada durante el desarrollo; usar siempre MySQL self-hosted vía Docker (gratis) y reservar el servicio gestionado para producción en la fase de escalado.
+
 ## Ruta de creación (self-hosted, fase inicial)
 Ya está definida en el `docker-compose.yml` del backend (ver sección 8.2 del documento principal). No requiere cuenta externa.
 
@@ -26,8 +34,8 @@ Ya está definida en el `docker-compose.yml` del backend (ver sección 8.2 del d
 5. Copiar cadena de conexión y credenciales.
 
 ## Contrato / plan recomendado
-- Self-hosted: sin costo adicional (incluido en el VPS).
-- Gestionado (ejemplo DigitalOcean): plan básico ~$15 USD/mes (1 vCPU/1GB) hasta ~$60 USD/mes con réplica de lectura incluida.
+- Self-hosted: sin costo adicional (incluido en el VPS), sin límite de tiempo.
+- Gestionado (ejemplo DigitalOcean): plan básico desde $15 USD/mes (1 vCPU/1GB) hasta ~$60 USD/mes con réplica de lectura incluida (precios ago-2026, verificar vigencia en https://www.digitalocean.com/pricing/managed-databases).
 - Revisar políticas de backup automático (retención típica: 7 días en plan básico).
 
 ## Configuración

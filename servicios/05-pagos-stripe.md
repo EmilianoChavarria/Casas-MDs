@@ -10,6 +10,16 @@ Procesar el pago (total o anticipo) de una reserva con tarjeta, principalmente d
 
 **Complementar con Mercado Pago** (ver `06-pagos-mercadopago.md`) para métodos locales mexicanos (OXXO, SPEI, tarjetas de débito nacionales con mejores tasas de aprobación).
 
+## 💰 Precio y plan gratuito para desarrollo
+Stripe **no cobra nada por mes ni por usar el modo de pruebas**:
+
+| Modo | Costo | ¿Sirve para pruebas de desarrollo? |
+|---|---|---|
+| **Test mode / Sandbox** | $0, sin límite de tiempo ni de transacciones | ✅ Sí — tarjetas de prueba, webhooks de prueba, todo el flujo completo sin mover dinero real; es el modo recomendado para todo el desarrollo |
+| **Live mode** | Sin costo fijo mensual; solo comisión por transacción real (ver abajo) | Solo se activa cuando el proyecto pasa a producción |
+
+**Recomendación:** desarrollar y probar 100% en modo Test (gratis e indefinido) y activar el modo Live solo al lanzar a producción.
+
 ## Ruta de creación
 1. Crear cuenta en https://dashboard.stripe.com/register
 2. Completar el proceso de activación de cuenta (KYC): datos fiscales de la empresa, cuenta bancaria de destino, tipo de negocio ("Bienes raíces / alquiler vacacional" o similar).

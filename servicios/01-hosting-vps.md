@@ -15,6 +15,19 @@ Servidor donde corre el backend Laravel (Docker: app, Nginx, MySQL, Redis, queue
 | DigitalOcean | Si priorizas datacenter más cercano a México (NYC/SFO) o soporte en español |
 | Hostinger VPS | Solo si ya tienes cuenta y quieres simplicidad extrema; menos flexible para Docker avanzado |
 
+## 💰 Precio y plan gratuito para desarrollo
+Un VPS **no es un servicio que tenga plan gratuito permanente** en ningún proveedor serio (Hetzner, DigitalOcean, Hostinger) — siempre se paga desde el primer minuto.
+
+| Opción | Costo | ¿Sirve para pruebas de desarrollo? |
+|---|---|---|
+| **Docker Compose local** (tu propia máquina) | $0 | ✅ Recomendado — así se desarrolla día a día, sin gastar nada; réplica exacta del stack (app, Nginx, MySQL, Redis) que luego corre en el VPS |
+| **Hetzner Cloud (servidor real de prueba)** | Facturación por hora, sin permanencia (el plan más pequeño ronda unos pocos €/mes si se deja prendido, o céntimos si se crea y se destruye en minutos) | ✅ Útil para probar el deploy real (Docker, Nginx, SSL) antes de producción — crear el servidor, probar, y destruirlo cuando termines para no seguir pagando |
+| **DigitalOcean** | Ofrece ~$200 USD en créditos por 60 días a cuentas nuevas | ✅ Alternativa si quieres probar sin poner tarjeta "en serio" desde el día uno |
+
+**Nota (ago-2026):** Hetzner ajustó precios el 15-jun-2026 y el plan CX32 mencionado abajo quedó descontinuado para nuevas contrataciones (reemplazado por specs equivalentes en la línea CX/CPX vigente). Verificar el precio y nombre de plan actual directamente en https://www.hetzner.com/cloud antes de contratar, ya que puede haber cambiado desde que se escribió este documento.
+
+**Recomendación:** desarrollar 100% local con Docker Compose (gratis) y usar el VPS real solo para staging/producción, no para desarrollo diario.
+
 ## Ruta de creación
 1. Crear cuenta en https://www.hetzner.com/cloud
 2. Verificar identidad (tarjeta o PayPal).
@@ -68,7 +81,8 @@ VPS_SSH_KEY=<llave privada del deploy>
 ```
 
 ## Costos aproximados (mensual)
-- CX32 + backups: ~€16–17/mes (~$18–19 USD)
-- Escalar a CX42 (8 vCPU/16GB) cuando el tráfico lo requiera: ~€27/mes
+- Servidor 4 vCPU/8GB + backups automáticos (+20%): estimar entre €15–20/mes (~$16–22 USD) según el plan vigente al momento de contratar — **verificar precio actual en el dashboard de Hetzner**, ya que el plan CX32 usado como referencia original fue descontinuado en el ajuste de precios de junio 2026.
+- Escalar a 8 vCPU/16GB cuando el tráfico lo requiera: rango esperado ~€25–30/mes.
+- $0/mes durante el desarrollo si se usa Docker Compose local (ver sección de plan gratuito arriba).
 
 Referenciado desde: `arquitectura-plataforma-renta.md`, sección 8 y 10.

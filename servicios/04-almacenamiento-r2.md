@@ -9,6 +9,18 @@ Almacenar las imágenes de las propiedades (`property_images`) y los backups de 
 
 **Cuándo usar S3 en su lugar:** si el equipo ya opera fuertemente en AWS (ej. usa Amazon SES para correo, Lambda, etc.) puede convenir mantener todo en un solo proveedor por simplicidad operativa. Para este proyecto, R2 es la opción con mejor costo-beneficio.
 
+## 💰 Precio y plan gratuito para desarrollo
+Cloudflare R2 tiene un **free tier permanente** (no es una prueba por tiempo limitado):
+
+| Recurso | Incluido gratis cada mes | ¿Sirve para desarrollo? |
+|---|---|---|
+| Storage (Standard) | 10 GB-mes | ✅ Sí, de sobra para un catálogo de propiedades en desarrollo |
+| Class A operations (escrituras: subir/listar) | 1,000,000 /mes | ✅ Sí |
+| Class B operations (lecturas) | 10,000,000 /mes | ✅ Sí |
+| Egress (transferencia de salida) | Siempre $0, incluso fuera del free tier | ✅ Sí |
+
+**Recomendación:** usar la misma cuenta/bucket de R2 para desarrollo (con un bucket separado, ej. `rentas-casas-media-dev`) sin preocuparse por costo — es muy difícil salir del free tier en fase de desarrollo.
+
 ## Ruta de creación
 1. Crear/usar cuenta de Cloudflare (la misma que se usará para DNS, ver `09-cloudflare-dns-cdn.md`).
 2. Panel → **R2 Object Storage** → Create bucket (ej. `rentas-casas-media`).
@@ -17,11 +29,12 @@ Almacenar las imágenes de las propiedades (`property_images`) y los backups de 
 5. (Opcional pero recomendado) Conectar el bucket a un dominio propio vía **R2 → bucket → Settings → Public Access → Connect Domain** (ej. `cdn.midominio.com`) para servir imágenes con tu propio dominio en vez de la URL genérica de R2.
 
 ## Contrato / plan recomendado
-- **Storage:** $0.015 USD/GB-mes.
-- **Class A operations** (escrituras, ej. subir imagen): $4.50 USD por millón.
-- **Class B operations** (lecturas): $0.36 USD por millón.
-- **Egress: $0** (esta es la diferencia clave frente a S3, que cobra ~$0.09/GB de salida).
-- Para un catálogo de propiedades con cientos de imágenes y tráfico moderado, el costo mensual esperado es de unos pocos dólares.
+- **Free tier:** 10 GB storage + 1M Class A ops + 10M Class B ops por mes, gratis de forma permanente.
+- **Storage (excedente):** $0.015 USD/GB-mes.
+- **Class A operations** (escrituras, ej. subir imagen): $4.50 USD por millón (excedente sobre el 1M gratis).
+- **Class B operations** (lecturas): $0.36 USD por millón (excedente sobre el 10M gratis).
+- **Egress: $0 siempre**, dentro o fuera del free tier (esta es la diferencia clave frente a S3, que cobra ~$0.09/GB de salida).
+- Para un catálogo de propiedades con cientos de imágenes y tráfico moderado, el costo mensual esperado en producción es de unos pocos dólares (o $0 si no se supera el free tier).
 
 ## Configuración
 
