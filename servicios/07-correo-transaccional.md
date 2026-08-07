@@ -81,4 +81,4 @@ class BookingConfirmedNotification extends Notification
 
 Se despacha desde un Job en cola (`SendBookingConfirmationEmail`, ver `03-cache-colas-redis.md`) para no bloquear el request del pago.
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 3 y 10.
+Referenciado desde: `../arquitectura/`, secciones 1, 3 y 10.

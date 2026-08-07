@@ -100,4 +100,4 @@ VPS_SSH_KEY=<llave privada del deploy>
 - Escalar a 8 vCPU/16GB cuando el tráfico lo requiera: rango esperado ~€25–30/mes.
 - $0/mes durante el desarrollo si se usa Docker Compose local (ver sección de plan gratuito arriba).
 
-Referenciado desde: `../../arquitectura/`, sección 8 y 10.
+Referenciado desde: `../arquitectura/`, sección 8 y 10.

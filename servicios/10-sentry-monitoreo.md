@@ -77,4 +77,4 @@ Subir source maps automáticamente en el deploy del frontend para que los stack 
     SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 ```
 
-Referenciado desde: `../../arquitectura/`, secciones 7 y 10.
+Referenciado desde: `../arquitectura/`, secciones 7 y 10.

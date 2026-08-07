@@ -92,4 +92,4 @@ public function storePropertyImage(Property $property, UploadedFile $file): Prop
 }
 ```
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 3 y 8.
+Referenciado desde: `../arquitectura/`, secciones 1, 3 y 8.

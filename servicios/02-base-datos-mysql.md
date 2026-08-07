@@ -74,4 +74,4 @@ DB_PASSWORD=<generado seguro, guardado en GitHub Secrets>
 0 3 * * * docker exec mysql_container mysqldump -u root -p$MYSQL_ROOT_PASSWORD rentas | gzip > /backups/rentas_$(date +\%F).sql.gz
 ```
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 5 y 8.
+Referenciado desde: `../arquitectura/`, secciones 1, 5 y 8.

@@ -86,4 +86,4 @@ match ($event->type) {
 
 **Importante:** procesar el webhook de forma **idempotente** (verificar que el `payment_intent.id` no se haya procesado ya) para evitar duplicar confirmaciones si Stripe reintenta la entrega del evento.
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 6, 7 y 10.
+Referenciado desde: `../arquitectura/`, secciones 1, 6, 7 y 10.

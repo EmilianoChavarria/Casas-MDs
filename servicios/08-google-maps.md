@@ -90,4 +90,4 @@ public function geocodeAddress(string $address): array
 }
 ```
 
-Referenciado desde: `../../arquitectura/`, secciones 5 y 10.
+Referenciado desde: `../arquitectura/`, secciones 5 y 10.

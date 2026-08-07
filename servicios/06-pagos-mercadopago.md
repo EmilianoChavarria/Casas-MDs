@@ -88,4 +88,4 @@ if ($payment->status === 'approved') {
 
 **Importante:** al igual que con Stripe, procesar de forma idempotente usando `external_reference` (el `booking_id`) para evitar doble confirmación.
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 6, 7 y 10.
+Referenciado desde: `../arquitectura/`, secciones 1, 6, 7 y 10.

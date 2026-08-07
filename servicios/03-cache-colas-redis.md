@@ -78,4 +78,4 @@ Cache::remember('amenities:all', now()->addHours(6), fn () => Amenity::all());
 Cache::forget('amenities:all');
 ```
 
-Referenciado desde: `../../arquitectura/`, secciones 1, 8 y 11.
+Referenciado desde: `../arquitectura/`, secciones 1, 8 y 11.

@@ -2,7 +2,7 @@
 
 **Stack:** Next.js (React + TS) · Laravel 12 API REST · MySQL 8 · Sanctum · S3/R2 · Redis · Docker · Nginx · GitHub Actions
 
-Este README es solo el **índice**. El contenido está dividido en dos bloques: la arquitectura del sistema (carpeta [`arquitectura/`](arquitectura/)) y los servicios externos contratables (un `.md` por servicio, en [`servicios/servicios/`](servicios/servicios/)).
+Este README es solo el **índice**. El contenido está dividido en dos bloques: la arquitectura del sistema (carpeta [`arquitectura/`](arquitectura/)) y los servicios externos contratables (un `.md` por servicio, en [`servicios/`](servicios/)).
 
 ---
 
@@ -27,20 +27,20 @@ Este README es solo el **índice**. El contenido está dividido en dos bloques: 
 
 ---
 
-## 🧩 Servicios externos — [`servicios/servicios/`](servicios/servicios/)
+## 🧩 Servicios externos — [`servicios/`](servicios/)
 
 Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justificación, precio y plan gratuito para desarrollo, ruta de creación, contrato/costos, configuración).
 
 | # | Servicio | Archivo | ¿Plan free para desarrollo? |
 |---|---|---|---|
-| 01 | Hosting / VPS — Hetzner Cloud | [`01-hosting-vps.md`](servicios/servicios/01-hosting-vps.md) | ❌ No (usar Docker local, gratis) |
-| 02 | Base de Datos — MySQL 8 | [`02-base-datos-mysql.md`](servicios/servicios/02-base-datos-mysql.md) | ✅ Self-hosted gratis |
-| 03 | Cache y Colas — Redis | [`03-cache-colas-redis.md`](servicios/servicios/03-cache-colas-redis.md) | ✅ Self-hosted gratis / Upstash free permanente |
-| 04 | Almacenamiento de Imágenes — Cloudflare R2 | [`04-almacenamiento-r2.md`](servicios/servicios/04-almacenamiento-r2.md) | ✅ Free tier permanente |
-| 05 | Pagos — Stripe | [`05-pagos-stripe.md`](servicios/servicios/05-pagos-stripe.md) | ✅ Sandbox gratis e ilimitado |
-| 06 | Pagos — Mercado Pago | [`06-pagos-mercadopago.md`](servicios/servicios/06-pagos-mercadopago.md) | ✅ Usuarios de prueba gratis |
-| 07 | Correo Transaccional — Resend / Amazon SES | [`07-correo-transaccional.md`](servicios/servicios/07-correo-transaccional.md) | ✅ Resend free permanente ⚠️ SES solo 12 meses |
-| 08 | Google Maps Platform | [`08-google-maps.md`](servicios/servicios/08-google-maps.md) | ✅ 10,000 llamadas gratis/API/mes (plan Essentials) |
-| 09 | Cloudflare — DNS, CDN, WAF | [`09-cloudflare-dns-cdn.md`](servicios/servicios/09-cloudflare-dns-cdn.md) | ✅ Plan Free permanente |
-| 10 | Monitoreo de Errores — Sentry | [`10-sentry-monitoreo.md`](servicios/servicios/10-sentry-monitoreo.md) | ✅ Plan Developer gratis permanente |
-| 11 | Registro de Dominio | [`11-dominio.md`](servicios/servicios/11-dominio.md) | ❌ Nunca (no se necesita para desarrollar) |
+| 01 | Hosting / VPS — Hetzner Cloud | [`01-hosting-vps.md`](servicios/01-hosting-vps.md) | ❌ No (usar Docker local, gratis) |
+| 02 | Base de Datos — MySQL 8 | [`02-base-datos-mysql.md`](servicios/02-base-datos-mysql.md) | ✅ Self-hosted gratis |
+| 03 | Cache y Colas — Redis | [`03-cache-colas-redis.md`](servicios/03-cache-colas-redis.md) | ✅ Self-hosted gratis / Upstash free permanente |
+| 04 | Almacenamiento de Imágenes — Cloudflare R2 | [`04-almacenamiento-r2.md`](servicios/04-almacenamiento-r2.md) | ✅ Free tier permanente |
+| 05 | Pagos — Stripe | [`05-pagos-stripe.md`](servicios/05-pagos-stripe.md) | ✅ Sandbox gratis e ilimitado |
+| 06 | Pagos — Mercado Pago | [`06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md) | ✅ Usuarios de prueba gratis |
+| 07 | Correo Transaccional — Resend / Amazon SES | [`07-correo-transaccional.md`](servicios/07-correo-transaccional.md) | ✅ Resend free permanente ⚠️ SES solo 12 meses |
+| 08 | Google Maps Platform | [`08-google-maps.md`](servicios/08-google-maps.md) | ✅ 10,000 llamadas gratis/API/mes (plan Essentials) |
+| 09 | Cloudflare — DNS, CDN, WAF | [`09-cloudflare-dns-cdn.md`](servicios/09-cloudflare-dns-cdn.md) | ✅ Plan Free permanente |
+| 10 | Monitoreo de Errores — Sentry | [`10-sentry-monitoreo.md`](servicios/10-sentry-monitoreo.md) | ✅ Plan Developer gratis permanente |
+| 11 | Registro de Dominio | [`11-dominio.md`](servicios/11-dominio.md) | ❌ Nunca (no se necesita para desarrollar) |
