@@ -1,21 +1,21 @@
 # 10. Servicios externos recomendados
 
 
-Cada servicio tiene su propia carpeta con un `.md` por sección: para qué se usa, justificación, precio y plan gratuito para desarrollo, ruta de creación paso a paso, condiciones de contrato/costos, y configuración concreta (variables de entorno, código). Ver el [índice principal](../README.md) para el link a cada sección.
+Cada servicio tiene su propio README con: para qué se usa, justificación, precio y plan gratuito para desarrollo, ruta de creación paso a paso, condiciones de contrato/costos, y configuración concreta (variables de entorno, código). Están en la carpeta `servicios/servicios/`:
 
-| Servicio | Cuándo usarlo | Carpeta |
+| Servicio | Cuándo usarlo | Detalle |
 |---|---|---|
-| **VPS / Hosting (Hetzner)** | Servidor de producción del backend | [`01-hosting-vps/`](../01-hosting-vps/) |
-| **Base de datos (MySQL)** | Self-hosted → gestionado según crecimiento | [`02-base-datos-mysql/`](../02-base-datos-mysql/) |
-| **Cache/Colas (Redis)** | Cache de catálogos, colas de Laravel | [`03-cache-colas-redis/`](../03-cache-colas-redis/) |
-| **Almacenamiento (Cloudflare R2)** | Imágenes de propiedades y backups | [`04-almacenamiento-r2/`](../04-almacenamiento-r2/) |
-| **Stripe** | Pagos con tarjeta internacional | [`05-pagos-stripe/`](../05-pagos-stripe/) |
-| **Mercado Pago** | Pagos locales MX: tarjetas nacionales, OXXO, SPEI | [`06-pagos-mercadopago/`](../06-pagos-mercadopago/) |
-| **Correo (Resend / SES)** | Confirmaciones y notificaciones transaccionales | [`07-correo-transaccional/`](../07-correo-transaccional/) |
-| **Google Maps** | Ubicación de propiedades, autocompletado de dirección | [`08-google-maps/`](../08-google-maps/) |
-| **Cloudflare (DNS/CDN/WAF)** | DNS, CDN, protección DDoS, SSL | [`09-cloudflare-dns-cdn/`](../09-cloudflare-dns-cdn/) |
-| **Sentry** | Monitoreo de errores frontend/backend | [`10-sentry-monitoreo/`](../10-sentry-monitoreo/) |
-| **Dominio** | Registro y gestión del dominio propio | [`11-dominio/`](../11-dominio/) |
+| **VPS / Hosting (Hetzner)** | Servidor de producción del backend | [`servicios/servicios/01-hosting-vps.md`](../servicios/servicios/01-hosting-vps.md) |
+| **Base de datos (MySQL)** | Self-hosted → gestionado según crecimiento | [`servicios/servicios/02-base-datos-mysql.md`](../servicios/servicios/02-base-datos-mysql.md) |
+| **Cache/Colas (Redis)** | Cache de catálogos, colas de Laravel | [`servicios/servicios/03-cache-colas-redis.md`](../servicios/servicios/03-cache-colas-redis.md) |
+| **Almacenamiento (Cloudflare R2)** | Imágenes de propiedades y backups | [`servicios/servicios/04-almacenamiento-r2.md`](../servicios/servicios/04-almacenamiento-r2.md) |
+| **Stripe** | Pagos con tarjeta internacional | [`servicios/servicios/05-pagos-stripe.md`](../servicios/servicios/05-pagos-stripe.md) |
+| **Mercado Pago** | Pagos locales MX: tarjetas nacionales, OXXO, SPEI | [`servicios/servicios/06-pagos-mercadopago.md`](../servicios/servicios/06-pagos-mercadopago.md) |
+| **Correo (Resend / SES)** | Confirmaciones y notificaciones transaccionales | [`servicios/servicios/07-correo-transaccional.md`](../servicios/servicios/07-correo-transaccional.md) |
+| **Google Maps** | Ubicación de propiedades, autocompletado de dirección | [`servicios/servicios/08-google-maps.md`](../servicios/servicios/08-google-maps.md) |
+| **Cloudflare (DNS/CDN/WAF)** | DNS, CDN, protección DDoS, SSL | [`servicios/servicios/09-cloudflare-dns-cdn.md`](../servicios/servicios/09-cloudflare-dns-cdn.md) |
+| **Sentry** | Monitoreo de errores frontend/backend | [`servicios/servicios/10-sentry-monitoreo.md`](../servicios/servicios/10-sentry-monitoreo.md) |
+| **Dominio** | Registro y gestión del dominio propio | [`servicios/servicios/11-dominio.md`](../servicios/servicios/11-dominio.md) |
 
 **Sugerencia de pago:** si el mercado objetivo es mexicano, usar Mercado Pago como primario y Stripe como secundario para turistas internacionales.
 
