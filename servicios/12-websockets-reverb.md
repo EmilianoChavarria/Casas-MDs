@@ -65,9 +65,30 @@ REVERB_SCHEME=https
 REVERB_SERVER_HOST=0.0.0.0
 REVERB_SERVER_PORT=8080
 
+# Mantener viva la conexión detrás de Cloudflare (ver "Timeouts" abajo)
+REVERB_APP_ACTIVITY_TIMEOUT=30
+REVERB_APP_PING_INTERVAL=45
+
 # Escalado horizontal (solo con varias instancias, ver sección 11)
 REVERB_SCALING_ENABLED=false
 ```
+
+### Timeouts: mantener la conexión viva detrás de Cloudflare
+
+Cloudflare con proxy naranja soporta WebSockets, pero **corta las conexiones inactivas a los 100 s en plan Free** (no es configurable en ese plan). Entre el navegador y Reverb hay tres intermediarios con timeout propio, y deben ordenarse de menor a mayor:
+
+| Orden | Quién | Valor | Dónde se configura |
+|---|---|---|---|
+| 1 | Cliente (`pusher-js`) hace ping | **30 s** sin tráfico | `REVERB_APP_ACTIVITY_TIMEOUT` |
+| 2 | Servidor Reverb pinguea inactivos | **45 s** | `REVERB_APP_PING_INTERVAL` |
+| 3 | Cloudflare corta inactivas | **100 s** (fijo en Free) | — |
+| 4 | Nginx corta inactivas | **3600 s** | `proxy_read_timeout` |
+
+**No hay que programar un heartbeat.** El protocolo Pusher ya lo trae: el servidor manda `activity_timeout` en el `pusher:connection_established` del handshake, y `pusher-js` (debajo de Laravel Echo) emite `pusher:ping` solo tras ese tiempo sin tráfico. Solo se ajustan los números.
+
+Los defaults de Reverb (`activity_timeout` 30, `ping_interval` 60) ya quedan por debajo de los 100 s, así que funciona sin tocar nada — se declaran explícitos para que nadie los suba después sin entender la consecuencia. Confirmar los nombres exactos en el `config/reverb.php` que genere `install:broadcasting` en la versión instalada.
+
+⚠️ **Los mensajes emitidos mientras un cliente está desconectado se pierden**: Reverb no tiene buffer ni reenvío, y la desconexión ocurre igual (pestaña en segundo plano en iOS, cambio de red, `deploy` que reinicia el proceso). El frontend debe refetchear por REST al reconectar — ver sección **16.9** del documento de arquitectura.
 
 ### Variables del frontend (`.env.local` de Next.js)
 ```
@@ -101,10 +122,13 @@ server {
         proxy_set_header    Host $host;
         proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header    X-Forwarded-Proto $scheme;
-        proxy_read_timeout  60s;
+        proxy_read_timeout  3600s;
+        proxy_send_timeout  3600s;
     }
 }
 ```
+
+⚠️ **`proxy_read_timeout` debe ser el timeout más laxo de la cadena.** Con el valor típico de 60 s, Nginx cierra la conexión justo cuando toca el ping del servidor y el chat se cae aproximadamente cada minuto. Quien detecta conexiones muertas es el `ping/pong` del protocolo Pusher, no el proxy.
 
 ### Supervisor
 ```ini

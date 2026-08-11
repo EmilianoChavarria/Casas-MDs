@@ -221,7 +221,8 @@ location / {
     proxy_set_header    Host $host;
     proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header    X-Forwarded-Proto $scheme;
-    proxy_read_timeout  60s;
+    proxy_read_timeout  3600s;
+    proxy_send_timeout  3600s;
 }
 ```
 
@@ -238,8 +239,6 @@ redirect_stderr=true
 stdout_logfile=/var/www/html/storage/logs/reverb.log
 ```
 
-⚠️ **En Cloudflare**, el proxy naranja soporta WebSockets, pero conviene revisar el timeout de conexión inactiva (100 s en plan Free). Mantener `ping/pong` activo desde el cliente para que la conexión no se corte sola.
-
 Variables de entorno:
 
 ```
@@ -252,11 +251,66 @@ REVERB_PORT=443
 REVERB_SCHEME=https
 REVERB_SERVER_HOST=0.0.0.0
 REVERB_SERVER_PORT=8080
+
+# Mantener viva la conexión detrás de Cloudflare (ver cadena de timeouts abajo)
+REVERB_APP_ACTIVITY_TIMEOUT=30
+REVERB_APP_PING_INTERVAL=45
 ```
 
 ---
 
-### 16.8 Seguridad del chat
+### 16.8 Cadena de timeouts (mantener la conexión viva)
+
+Entre el navegador y el proceso Reverb hay tres intermediarios, cada uno con su propio timeout de inactividad. **Deben ordenarse de menor a mayor**, o el eslabón más estricto tira la conexión antes de que el `ping` alcance a demostrar que sigue viva:
+
+| Orden | Quién | Valor | Dónde se configura |
+|---|---|---|---|
+| 1 | Cliente (`pusher-js`) hace ping | **30 s** sin tráfico | `REVERB_APP_ACTIVITY_TIMEOUT` (el servidor se lo dicta al cliente en el handshake) |
+| 2 | Servidor Reverb pinguea inactivos | **45 s** | `REVERB_APP_PING_INTERVAL` |
+| 3 | Cloudflare corta inactivas | **100 s** (plan Free, no configurable) | — |
+| 4 | Nginx corta inactivas | **3600 s** | `proxy_read_timeout` |
+
+**No hay que escribir un heartbeat a mano.** Reverb habla el protocolo Pusher, que ya trae `ping/pong`: en el handshake el servidor manda `activity_timeout` dentro de `pusher:connection_established`, y `pusher-js` (debajo de Laravel Echo) emite `pusher:ping` solo tras ese tiempo sin tráfico. Lo único que se configura son los números de arriba.
+
+Los valores por defecto de Reverb (`activity_timeout` 30, `ping_interval` 60) ya caen debajo de los 100 s de Cloudflare, así que funciona sin tocar nada. Se documentan explícitamente para que nadie los suba "para ahorrar tráfico" y rompa el chat sin entender por qué. Confirmar los nombres exactos en el `config/reverb.php` que genere `install:broadcasting` en la versión instalada.
+
+**El error clásico:** dejar `proxy_read_timeout 60s` en Nginx. Empata con el ping del servidor y la conexión se cae aproximadamente cada minuto, con Cloudflare o sin él. Nginx debe ser siempre el más laxo de la cadena.
+
+---
+
+### 16.9 Resincronización al reconectar
+
+Más importante que los timeouts: **un broadcast que se emite mientras el cliente está desconectado se pierde para siempre.** Reverb no tiene buffer ni reenvío. Y la desconexión es inevitable aunque toda la cadena de timeouts esté perfecta:
+
+- Pestaña en segundo plano en iOS Safari — el sistema suspende el socket.
+- Cambio de WiFi a datos móviles, o túnel/elevador.
+- Cada `deploy` que reinicia el proceso Reverb.
+
+`pusher-js` reconecta solo, así que el síntoma es traicionero: el chat *se ve* funcionando, pero le faltan mensajes en medio. Nadie reporta el bug porque nadie sabe que faltó algo.
+
+**Regla:** el WebSocket entrega mensajes *nuevos*; la fuente de verdad del historial siempre es REST. Al reconectar hay que traer el hueco.
+
+```ts
+// hooks/useEcho.ts — al recuperar la conexión, traer lo que se perdió
+echo.connector.pusher.connection.bind('connected', () => {
+  // lastMessageId = el id más alto que el cliente ya tiene en pantalla
+  refetchMessagesSince(conversationId, lastMessageId);
+});
+```
+
+Del lado del backend, esto solo necesita que el endpoint de listado ya soporte el filtro — que es la misma paginación keyset de la sección 16.4, en sentido inverso:
+
+```
+GET /api/conversations/{id}/messages?after_id=<lastMessageId>
+```
+
+Al aplicar el resultado, deduplicar por `id`: si un mensaje llegó por WebSocket *y* por el refetch, debe aparecer una sola vez. Un `Map` por `id` al hacer merge lo resuelve.
+
+Conviene además mostrar el estado de conexión en la UI (un indicador discreto de "reconectando…" enganchado a los eventos `connecting`/`unavailable` de `pusher.connection`): si la reconexión falla del todo, el usuario debe enterarse en lugar de quedarse mirando un chat mudo.
+
+---
+
+### 16.10 Seguridad del chat
 
 | Riesgo | Mitigación |
 |---|---|
@@ -267,7 +321,7 @@ REVERB_SERVER_PORT=8080
 | Fuga de datos personales | No permitir que el chat cambie estados de reserva ni pagos; es solo mensajería |
 | `guest_token` filtrado | UUID v4, cookie `httpOnly` + `Secure` + `SameSite=Lax`, expira a los 30 días, se invalida al vincular la cuenta |
 
-#### 16.8.1 Retención de conversaciones — ✅ DECIDIDO: diferenciada por tipo
+#### 16.10.1 Retención de conversaciones — ✅ DECIDIDO: diferenciada por tipo
 
 No todas las conversaciones valen lo mismo. Una consulta de alguien que nunca reservó es dato personal sin contrapartida operativa; el hilo de una reserva real es evidencia.
 
@@ -298,11 +352,11 @@ Ambos plazos viven en `configurations` (`chat.retention_months_orphan`, `chat.re
 ⚠️ **Anonimizar en vez de borrar no es alternativa aquí.** Sustituir nombre, correo y teléfono en las columnas deja intacto el cuerpo de los mensajes, donde el huésped escribe su propio teléfono, su número de vuelo o su dirección. Daría cumplimiento aparente sin cumplimiento real.
 
 ⚠️ **Consistencia con el aviso de privacidad.** Estos plazos deben coincidir con lo que declare el aviso de privacidad del cliente. Si el aviso dice otra cosa, manda el aviso — ajustar la configuración, no al revés.
-| Retención | Política diferenciada por tipo de conversación — ver 16.8.1 |
+| Retención | Política diferenciada por tipo de conversación — ver 16.10.1 |
 
 ---
 
-### 16.9 Escalabilidad
+### 16.11 Escalabilidad
 
 Complementa la tabla de la sección 11:
 

@@ -35,9 +35,13 @@ Es prácticamente obligatorio en este stack porque R2 (almacenamiento) requiere 
    ```
    A       @                 <IP del VPS>          Proxied (naranja)
    A       api               <IP del VPS>          Proxied (naranja)
+   A       ws                <IP del VPS>          Proxied (naranja)
    CNAME   cdn               <bucket>.r2.dev        Proxied (naranja)
    CNAME   www               midominio.com          Proxied (naranja)
    ```
+   El registro `ws` es el subdominio del WebSocket de Laravel Reverb (chat en tiempo real, sección 16). El proxy naranja soporta WebSockets sin configuración extra, pero **corta las conexiones inactivas a los 100 s en plan Free** — el `ping/pong` que trae el protocolo Pusher lo resuelve; ver `12-websockets-reverb.md` para los valores concretos.
+
+   > Dejarlo en gris (proxy off) esquiva ese límite, pero expone la IP del origen y deja el WebSocket sin protección DDoS. No compensa: mantener naranja y ajustar los timeouts.
 8. **SSL/TLS → Overview** → seleccionar modo **Full (Strict)** (requiere certificado válido en el origen, ver Certbot en `01-hosting-vps.md`, o usar Cloudflare Origin Certificate).
 9. **SSL/TLS → Origin Server → Create Certificate** para generar un certificado de origen válido por 15 años, instalarlo en Nginx del VPS (más simple que gestionar Let's Encrypt manualmente).
 10. **Security → WAF** → activar reglas gestionadas básicas (incluidas en Free).

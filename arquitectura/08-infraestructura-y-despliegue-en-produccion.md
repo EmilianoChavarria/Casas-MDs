@@ -60,14 +60,15 @@ server {
         proxy_set_header    Host $host;
         proxy_set_header    X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header    X-Forwarded-Proto $scheme;
-        proxy_read_timeout  60s;
+        proxy_read_timeout  3600s;
+        proxy_send_timeout  3600s;
     }
 }
 ```
 
 Sin los headers `Upgrade` y `Connection`, el handshake WebSocket falla con un 400 y el cliente cae en reconexión infinita — es el error más común al desplegar Reverb detrás de un proxy.
 
-⚠️ **Cloudflare** soporta WebSockets con el proxy naranja activo, pero corta conexiones inactivas (100 s en plan Free). El cliente debe mantener `ping/pong` activo.
+⚠️ **`proxy_read_timeout` debe ser el timeout más laxo de toda la cadena, no el más estricto.** Quien detecta conexiones muertas es el `ping/pong` del protocolo, no el proxy. Con el valor por defecto de 60 s, Nginx cierra la conexión justo cuando toca el ping del servidor (que también sale cada 60 s) y el chat se cae solo cada minuto — con Cloudflare o sin él. Ver la cadena completa de timeouts en la sección 16.8.
 
 ### 8.4 Otros puntos operativos
 
@@ -76,7 +77,7 @@ Sin los headers `Upgrade` y `Connection`, el handshake WebSocket falla con un 40
 - **Cron:** `php artisan schedule:run` cada minuto. Tareas programadas:
   - `ExpirePendingBookings` **cada 5 minutos** — libera reservas sin pagar según el plazo del medio de pago (sección 5.5). Con lock y relectura de estado, para no cancelar una reserva cuyo webhook de pago está llegando en ese instante.
   - `RecalculatePriceCalendar` — extensión diaria del horizonte de precios.
-  - `PurgeOldConversations` — retención diferenciada del chat (sección 16.8.1).
+  - `PurgeOldConversations` — retención diferenciada del chat (sección 16.10.1).
   - `FetchExchangeRates` — actualización diaria del tipo de cambio.
   - Generación de reportes.
 - **Queue workers + Supervisor:** ya tienes experiencia directa con esto (Reverb/queue:work); mismo patrón aquí para `queue:work` de emails, webhooks de pago y recálculo del calendario de precios.
