@@ -40,7 +40,7 @@ Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justif
 
 | # | Servicio | Archivo | ¿Plan free para desarrollo? |
 |---|---|---|---|
-| 01 | Hosting / VPS — Hetzner Cloud | [`01-hosting-vps.md`](servicios/01-hosting-vps.md) | ❌ No (usar Docker local, gratis) |
+| 01 | Hosting / VPS — DigitalOcean | [`01-hosting-vps.md`](servicios/01-hosting-vps.md) | ❌ No (usar Docker local, gratis) |
 | 02 | Base de Datos — MySQL 8 | [`02-base-datos-mysql.md`](servicios/02-base-datos-mysql.md) | ✅ Self-hosted gratis |
 | 03 | Cache y Colas — Redis | [`03-cache-colas-redis.md`](servicios/03-cache-colas-redis.md) | ✅ Self-hosted gratis / Upstash free permanente |
 | 04 | Almacenamiento de Imágenes — Cloudflare R2 | [`04-almacenamiento-r2.md`](servicios/04-almacenamiento-r2.md) | ✅ Free tier permanente |

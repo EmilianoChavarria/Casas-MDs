@@ -14,7 +14,7 @@
 | **Google Places** (solo autocompletado admin) | Precisión de direcciones en México, superior a Nominatim; volumen mínimo (una alta por casa) muy por debajo del free tier | Obligatorio usar *session tokens* y restringir la key por dominio, o la facturación se dispara |
 | **Docker + Docker Compose** | Reproducibilidad entre local/dev/prod | Ninguno |
 | **GitHub Actions** | Ya lo usas en tu pipeline de `notasCreditos`, reutilizable | Ninguno |
-| **VPS (Hetzner recomendado)** | Mejor relación costo/rendimiento que DigitalOcean para este tamaño de proyecto | Hetzner > DO > Hostinger |
+| **VPS (DigitalOcean recomendado)** | Precio equiparable a Hetzner tras el ajuste de jun-2026, con mejor cobertura de regiones (US y EU) y ecosistema integrado (VPC, firewall, MySQL gestionado) | DO > Hetzner > Hostinger |
 
 ---
 

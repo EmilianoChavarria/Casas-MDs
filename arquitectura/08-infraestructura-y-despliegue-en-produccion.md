@@ -3,7 +3,7 @@
 
 ### 8.1 Topología
 
-- 1 VPS (Hetzner CX32 o similar) para Laravel + MySQL + Redis (o MySQL gestionado aparte si el presupuesto lo permite).
+- 1 VPS (DigitalOcean Basic Droplet 4 vCPU / 8 GB o similar) para Laravel + MySQL + Redis (o MySQL gestionado aparte si el presupuesto lo permite).
 - Next.js puede vivir en **Vercel** (más simple, CDN global, ISR nativo) o en el mismo VPS con `pm2`/Docker si prefieres todo autoalojado — dado tu contexto de cPanel/VPS, recomiendo Vercel para el frontend y VPS solo para el backend.
 
 ### 8.2 Docker Compose (backend)

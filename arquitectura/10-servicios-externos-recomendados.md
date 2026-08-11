@@ -5,7 +5,7 @@ Cada servicio tiene su propio README con: para qué se usa, justificación, prec
 
 | Servicio | Cuándo usarlo | Detalle |
 |---|---|---|
-| **VPS / Hosting (Hetzner)** | Servidor de producción del backend | [`servicios/01-hosting-vps.md`](../servicios/01-hosting-vps.md) |
+| **VPS / Hosting (DigitalOcean)** | Servidor de producción del backend | [`servicios/01-hosting-vps.md`](../servicios/01-hosting-vps.md) |
 | **Base de datos (MySQL)** | Self-hosted → gestionado según crecimiento | [`servicios/02-base-datos-mysql.md`](../servicios/02-base-datos-mysql.md) |
 | **Cache/Colas (Redis)** | Cache de catálogos, colas de Laravel | [`servicios/03-cache-colas-redis.md`](../servicios/03-cache-colas-redis.md) |
 | **Almacenamiento (Cloudflare R2)** | Imágenes de propiedades y backups | [`servicios/04-almacenamiento-r2.md`](../servicios/04-almacenamiento-r2.md) |
@@ -22,7 +22,7 @@ Cada servicio tiene su propio README con: para qué se usa, justificación, prec
 
 **Sugerencia de pago:** si el mercado objetivo es mexicano, usar Mercado Pago como primario y Stripe como secundario para turistas internacionales.
 
-**Orden de contratación sugerido:** 1) Dominio → 2) Cloudflare (DNS) → 3) VPS (Hetzner) → 4) R2 (mismo panel de Cloudflare) → 5) Stripe/Mercado Pago → 6) Resend → 7) Tiles de mapa → 8) Sentry → 9) Google Maps (**hasta la fase 3**, cuando se construya el alta de propiedades). Este orden evita bloqueos (ej. no puedes verificar dominio en Resend sin tener antes el DNS en Cloudflare).
+**Orden de contratación sugerido:** 1) Dominio → 2) Cloudflare (DNS) → 3) VPS (DigitalOcean) → 4) R2 (mismo panel de Cloudflare) → 5) Stripe/Mercado Pago → 6) Resend → 7) Tiles de mapa → 8) Sentry → 9) Google Maps (**hasta la fase 3**, cuando se construya el alta de propiedades). Este orden evita bloqueos (ej. no puedes verificar dominio en Resend sin tener antes el DNS en Cloudflare).
 
 **Google Maps va al final a propósito:** solo se necesita para el autocompletado del formulario admin. Crear la cuenta antes deja una API key sin uso y sin restricciones dando vueltas — el escenario exacto de la factura sorpresa.
 
