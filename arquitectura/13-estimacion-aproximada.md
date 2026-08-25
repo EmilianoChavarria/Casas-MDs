@@ -29,8 +29,11 @@ Las filas marcadas ⏳ dependen de una duda abierta en [`dudas-cliente.md`](../d
 | Páginas legales + aceptación versionada ⏳ **D8** | 4–6 | Baja | **Alta** | Bloquea publicar la app de Google y activar cobros reales |
 | Reportes | 12–20 | Media | Baja-Media | Consultas agregadas costosas; normalizar 3 monedas |
 | Seguridad/hardening | 12–16 | Media | Alta | — |
+| **Experiencias / tours guiados** (sección 20) ⏳ **D9 D10 D11 D12** | **176–240** | **Alta** | Media | Sobreventa de cupo, aislamiento de datos del guía, reseñas por link abierto |
 | Despliegue producción | 12–16 | Media | Alta | Primer deploy real, subdominio WebSocket |
-| **Total estimado** | **~468–644 h** | | | (**~12–16 semanas** a tiempo completo, una persona) |
+| **Total estimado** | **~644–884 h** | | | (**~16–22 semanas** a tiempo completo, una persona) |
+
+> Sin el módulo de experiencias el total sigue siendo **~468–644 h (~12–16 semanas)**. Es el módulo más grande añadido hasta ahora: **+37 %** sobre el proyecto anterior. Su desglose interno está en la sección 20.12.
 
 ---
 
@@ -49,7 +52,10 @@ La estimación original era de **264–352 h**. Casi todo el aumento son **reque
 | Sistema de diseño | +8–12 | Faltaba en el diseño original |
 | Huéspedes extra + estancia larga | +6–10 | Pendiente de confirmar |
 | Ajustes de modelo de datos | +4–6 | Consecuencia de lo anterior |
-| **Total añadido** | **+146–212 h** | |
+| **Experiencias / tours guiados** | **+176–240** | **Cliente (producto nuevo)** |
+| **Total añadido** | **+322–452 h** | |
+
+**Experiencias es la partida más grande de todas, y es alcance nuevo declarado**: no es un módulo del sistema de casas, es un segundo producto —con su propio inventario, su propio checkout, su propio personal y sus propias reseñas— dentro de la misma plataforma. Conviene presentarlo así al cliente, porque "añadir tours" suena a una pantalla más y son casi seis semanas.
 
 Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuevo: eran huecos**. El diseño original solo contemplaba inicio de sesión de administradores, y el prototipo ya traía pantallas de registro y perfil de huésped que ninguna tabla soportaba.
 
@@ -92,6 +98,21 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 
 ---
 
+**Experiencias / tours guiados (176–240 h)** — desglose completo en la sección 20.12. Resumen:
+
+| Parte | Horas |
+|---|---|
+| Modelo de datos, CRUD de experiencias y de guías | 34–46 |
+| Motor de salidas (cupo con lock, estados, repetición, mínimo para operar) | 20–26 |
+| Reserva + pagos + reembolso automático | 16–22 |
+| Frontend público (listado, detalle, tarjeta sticky) | 22–28 |
+| Admin (calendario de salidas + sección de guías) | 28–38 |
+| Panel del guía | 14–18 |
+| Reseñas con doble calificación y link externo | 12–16 |
+| Notificaciones, impuestos por producto, reportes, pruebas | 30–46 |
+
+---
+
 ## 13.3 Dependencias críticas
 
 - El **motor de precios debe cerrarse antes** que el frontend público (el calendario muestra precio por noche) y antes que reservas (que congelan el desglose).
@@ -101,6 +122,7 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 - **Multi-idioma toca las rutas del frontend público.** Añadir prefijos de idioma después obliga a redirigir URLs ya indexadas por Google, con pérdida temporal de posicionamiento.
 - El **sistema de diseño va antes que checkout y formularios admin** — sin tokens de error no hay con qué pintar una validación.
 - El **chat no depende de nada ni bloquea nada.**
+- **Experiencias depende de pagos y de auth**, y toca `payments`: esa tabla debe nacer **polimórfica** desde las migraciones iniciales aunque el módulo se construya al final (sección 20.7). Es la única parte del módulo que no se puede posponer sin coste.
 
 ---
 
@@ -118,8 +140,9 @@ No todo pesa lo mismo a la hora de posponer:
 | **Cargos e impuestos** (12–18 h) | ❌ **No.** Un total sin IVA, ISH y DSA no es un fallo de software, es un problema fiscal |
 | **Sistema de diseño** (8–12 h) | ❌ No conviene. Omitirlo obliga a retocar cada pantalla ya construida |
 | **Auth de huéspedes** (12–16 h) | ⚠️ Solo si se acepta reservar como invitado, sin cuenta — pero eso elimina `/profile` del prototipo |
+| **Experiencias** (176–240 h) | ✅ **Sí, entero.** Es un producto aparte: las casas se venden igual sin él. ⚠️ Con una condición — dejar `payments` polimórfico desde el inicio (20.7). Dentro del módulo hay recortes propios en 20.12 |
 
-Difiriendo chat, promociones y parte de reportes se recortan **~70–100 h**, dejando un primer lanzamiento en torno a **340–480 h (~9–12 semanas)** con todo lo indispensable operando.
+Difiriendo chat, promociones y parte de reportes se recortan **~70–100 h**. Difiriendo además el módulo de experiencias completo, el primer lanzamiento vuelve a **340–480 h (~9–12 semanas)** con todo lo indispensable de la renta de casas operando.
 
 ---
 
