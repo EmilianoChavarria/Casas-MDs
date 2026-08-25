@@ -174,7 +174,7 @@ DB::transaction(function () use ($departureId, $seats) {
 
 Cuando el guía sí necesita el panel, se le crea el `user` con `role = guide` y se vincula. **El alta de guía y el alta de usuario son dos acciones distintas**, y el modal de alta lo refleja: la casilla "dar acceso al panel" es opcional y dispara la invitación por correo.
 
-⚠️ Esto **amplía D6** (cuántos administradores y cómo entran). Un rol `guide` con acceso al panel implica decidir cómo se autentica: contraseña, magic link o Google. Ver la duda **D9**.
+✅ **Decidido (D9, 25-ago-2026): los guías sí entran, con panel propio.** Se dan de alta igual que el personal (5.6): el admin crea la cuenta con su correo y la persona puede entrar con Google si coincide. El alta de guía y el alta de usuario siguen siendo dos acciones distintas — un guía externo puntual puede quedarse sin acceso.
 
 ### Los guías solo ven lo suyo
 
@@ -258,7 +258,11 @@ Hay dos formas de emitirlo y **hay que elegir** (ver duda **D11**):
 | ¿`schema.org/AggregateRating`? | ❌ **No emitir** | ✅ Sí |
 | Trabajo | Menor | +4–6 h |
 
-**Recomendación: construir A como lo pide el diseño, con las cuatro defensas de abajo, y dejar B preparado** (`experience_reviews.experience_booking_id` ya está en el esquema y `source` distingue el origen). Migrar después no rompe nada.
+✅ **Decidido (D11, 25-ago-2026): los dos.** Cada reserva recibe su link verificado por correo, y el guía conserva el link de grupo para pedirla en persona al terminar el tour. `experience_reviews.source` distingue el origen de cada una.
+
+⚠️ **Solo las verificadas alimentan `schema.org/AggregateRating`.** Las que llegan por el link de grupo se muestran en el sitio y cuentan para las métricas internas del guía, pero **no** entran en los datos estructurados. Mezclarlas es exactamente lo que Google sanciona con acción manual, y perder el rich snippet por unas cuantas reseñas de grupo no compensa.
+
+Esto significa dos promedios distintos en el sistema: el que se enseña en la página (todas las publicadas) y el que se emite en el marcado (solo verificadas). **Conviene que la interfaz de admin los muestre por separado**, o el primer reporte que no cuadre costará una tarde.
 
 **Defensas mínimas del token por salida:**
 
@@ -297,6 +301,10 @@ payments (id, payable_type, payable_id, provider, provider_ref,
 La alternativa —una tabla `experience_payments` aparte— evita la migración pero **duplica el manejo de webhooks, la idempotencia y la conciliación**, que es la parte cara y delicada del módulo de pagos. No compensa.
 
 ### Precio
+
+✅ **Cobro completo al reservar (D12).** No hay anticipo ni saldo en el punto de encuentro: el 100% se cobra en línea, lo que asegura el cupo y evita conciliar efectivo después de cada tour.
+
+⚠️ **OXXO y SPEI solo si la salida cae después del vencimiento de la referencia.** Una referencia tarda hasta ~3 días en pagarse; ofrecerla para un tour del sábado aparta un cupo que probablemente expire sin pago. La pasarela debe ocultar esos métodos cuando no dan tiempo, no rechazarlos después.
 
 **Precio por persona fijo por salida** (`departures.price_per_person`), copiado del catálogo al crear la salida y **congelado al reservar** (`experience_bookings.unit_price`). Mismo principio que `booking_nights` en la sección 15: el precio que vio el huésped es el que se cobra, aunque el catálogo cambie mañana.
 

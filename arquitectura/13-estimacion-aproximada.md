@@ -2,7 +2,7 @@
 
 Estimación para **una persona a tiempo completo**. No incluye el trabajo del cliente (redactar descripciones, revisar traducciones, conseguir fotografías) ni tiempos de espera por decisiones pendientes.
 
-Las filas marcadas ⏳ dependen de una duda abierta en [`dudas-cliente.md`](../dudas-cliente.md) y su rango puede moverse según la respuesta.
+Las filas marcadas ✅ tienen su duda resuelta (respuestas del 25-ago-2026). Las marcadas ⏳ siguen dependiendo de una duda abierta en [`dudas-cliente.md`](../dudas-cliente.md) y su rango puede moverse según la respuesta: quedan **D8** (textos legales, en curso) y **D10** (impuestos de los tours).
 
 | Módulo | Horas | Complejidad | Prioridad | Riesgo principal |
 |---|---|---|---|---|
@@ -11,27 +11,27 @@ Las filas marcadas ⏳ dependen de una duda abierta en [`dudas-cliente.md`](../d
 | CRUD propiedades/amenidades/imágenes | 30–40 | Media | Alta | Manejo de imágenes/S3 |
 | Motor de disponibilidad | 16–20 | Media-Alta | Alta | Condiciones de carrera |
 | **Motor de precios: temporadas + reglas + quote** | **30–40** | **Alta** | Alta | Traslape de temporadas, rangos que cruzan el año, precio congelado |
-| Cargos e impuestos configurables ⏳ **D5** | 12–18 | Media-Alta | Alta | Tres cargas fiscales con bases distintas; el DSA no es porcentaje |
-| Huéspedes extra + estancia larga ⏳ **D3 D4** | 6–10 | Baja-Media | Media | — |
+| Cargos e impuestos configurables ✅ **D5** | 12–18 | Media-Alta | Alta | Tres cargas fiscales con bases distintas; el DSA no es porcentaje |
+| Huéspedes extra + estancia larga ✅ **D3 D4** | 8–12 | Baja-Media | Media | — |
 | **Promociones y cupones** | **20–28** | Media-Alta | Media | Doble canje concurrente, dos ventanas de fechas (reserva vs. estancia) |
-| **Multi-divisa (cobro real MXN/USD/CAD)** ⏳ **D1** | **20–30** | **Alta** | Alta | Congelar tipo de cambio, reembolsos a tasa distinta, conciliar en 3 monedas |
+| **Multi-divisa (cobro real MXN/USD/CAD)** ✅ **D1** | **20–30** | **Alta** | Alta | Congelar tipo de cambio, reembolsos a tasa distinta, conciliar en 3 monedas |
 | Reservas (flujo completo) | 24–32 | Alta | Alta | Doble-booking, estados inconsistentes |
 | Pagos + webhooks | 24–32 | **Alta** | Alta | Idempotencia de webhooks, reconciliación |
-| **Multi-idioma ES/EN/FR + traducción asistida** ⏳ **D2** | **24–36** | **Alta** | Alta | SEO: `hreflang`, sitemap por idioma, riesgo de penalización por traducción sin revisar |
+| **Multi-idioma ES/EN/FR, traducción automática** ✅ **D2** | **18–28** | **Alta** | Alta | ⚠️ Sin cola de revisión: 6–8 h menos, a cambio del riesgo de penalización SEO que el cliente aceptó |
 | Frontend público (SEO/SSR) | 40–50 | Media-Alta | Alta | Rendimiento de imágenes, Core Web Vitals |
 | Sistema de diseño (tokens, a11y, skeletons, validación) | 8–12 | Baja-Media | Alta | Se paga una vez; omitirlo obliga a retocar cada pantalla después |
 | Dashboard admin (incl. calendario de temporadas y promociones) | 48–60 | Media | Media | Volumen de pantallas; la UI de temporadas es más compleja que un CRUD |
 | **Chat en tiempo real (Reverb + bandeja admin)** | **40–56** | **Alta** | Media | Infra WebSocket en producción (proxy, timeouts, Supervisor), reconexión y duplicados en el cliente |
-| Auth y permisos del panel ⏳ **D6** | 12–16 | Baja-Media | Alta | — |
+| Auth y permisos del panel ✅ **D6** | 12–16 | Baja-Media | Alta | — |
 | **Auth de huéspedes + Google OAuth** | 12–16 | Media | Alta | Vinculación de cuentas por correo (*account takeover* si se omite `email_verified`) |
 | **Reseñas y favoritos** (secciones 5.4 y 5.8) | 14–20 | Media | Media | Recálculo de `rating` desnormalizado; datos estructurados de SEO solo con reseñas reales |
 | **Notificaciones al huésped** (sección 19) | 12–18 | Media | Alta | 7 plantillas × 3 idiomas; los textos dependen del cliente |
-| Páginas legales + aceptación versionada ⏳ **D8** | 4–6 | Baja | **Alta** | Bloquea publicar la app de Google y activar cobros reales |
+| Páginas legales + aceptación versionada ⏳ **D8** (en curso) | 4–6 | Baja | **Alta** | Bloquea publicar la app de Google y activar cobros reales |
 | Reportes | 12–20 | Media | Baja-Media | Consultas agregadas costosas; normalizar 3 monedas |
 | Seguridad/hardening | 12–16 | Media | Alta | — |
-| **Experiencias / tours guiados** (sección 20) ⏳ **D9 D10 D11 D12** | **176–240** | **Alta** | Media | Sobreventa de cupo, aislamiento de datos del guía, reseñas por link abierto |
+| **Experiencias / tours guiados** (sección 20) ⏳ **D10** | **180–246** | **Alta** | Media | Sobreventa de cupo, aislamiento de datos del guía, reseñas por link abierto |
 | Despliegue producción | 12–16 | Media | Alta | Primer deploy real, subdominio WebSocket |
-| **Total estimado** | **~644–884 h** | | | (**~16–22 semanas** a tiempo completo, una persona) |
+| **Total estimado** | **~642–882 h** | | | (**~16–22 semanas** a tiempo completo, una persona) |
 
 > Sin el módulo de experiencias el total sigue siendo **~468–644 h (~12–16 semanas)**. Es el módulo más grande añadido hasta ahora: **+37 %** sobre el proyecto anterior. Su desglose interno está en la sección 20.12.
 
@@ -50,16 +50,16 @@ La estimación original era de **264–352 h**. Casi todo el aumento son **reque
 | Cargos e impuestos configurables | +12–18 | Obligación fiscal (IVA + ISH + DSA) |
 | Auth de huéspedes + Google OAuth | +12–16 | Faltaba en el diseño original |
 | Sistema de diseño | +8–12 | Faltaba en el diseño original |
-| Huéspedes extra + estancia larga | +6–10 | Pendiente de confirmar |
+| Huéspedes extra + estancia larga | +8–12 | Cliente (D3 y D4, confirmadas) |
 | Ajustes de modelo de datos | +4–6 | Consecuencia de lo anterior |
-| **Experiencias / tours guiados** | **+176–240** | **Cliente (producto nuevo)** |
-| **Total añadido** | **+322–452 h** | |
+| **Experiencias / tours guiados** | **+180–246** | **Cliente (producto nuevo)** |
+| **Total añadido** | **+326–458 h** | |
 
 **Experiencias es la partida más grande de todas, y es alcance nuevo declarado**: no es un módulo del sistema de casas, es un segundo producto —con su propio inventario, su propio checkout, su propio personal y sus propias reseñas— dentro de la misma plataforma. Conviene presentarlo así al cliente, porque "añadir tours" suena a una pantalla más y son casi seis semanas.
 
 Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuevo: eran huecos**. El diseño original solo contemplaba inicio de sesión de administradores, y el prototipo ya traía pantallas de registro y perfil de huésped que ninguna tabla soportaba.
 
-⚠️ **El total puede moverse según las respuestas del cliente.** El caso más sensible es **D1**: si opta por capturar un precio por moneda a mano en vez de conversión automática, la partida de multi-divisa baja a ~8–12 h, pero el dashboard admin sube un rango similar — porque cada temporada, regla y promoción se captura por triplicado. El total apenas cambia; lo que cambia es dónde cae el trabajo y cuánta captura manual carga el cliente para siempre.
+✅ **Diez de las doce dudas están resueltas** (25-ago-2026), así que el total ya no depende de ellas. Quedan dos frentes abiertos y **ninguno mueve las horas de forma significativa**: **D10** (impuestos del tour) cambia una configuración fiscal, no el motor, porque el perfil por tipo de producto ya está previsto; y **D8** (textos legales) es contenido del cliente, no desarrollo. Lo que ambos sí bloquean es la **salida a producción**.
 
 ---
 
@@ -76,21 +76,22 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 | Notificaciones por correo, adjuntos, purga programada | 4–6 |
 | Infra de producción: subdominio, Nginx, Supervisor, Cloudflare | *incluido en despliegue* |
 
-**Multi-idioma ES/EN/FR (24–36 h)** — el trabajo está más en el SEO que en la traducción:
+**Multi-idioma ES/EN/FR (18–28 h)** — el trabajo está más en el SEO que en la traducción:
 
 | Parte | Horas |
 |---|---|
 | Esquema `property_translations` + integración DeepL por cola | 6–8 |
-| Cola de revisión y aprobación en el panel admin | 6–8 |
+| ~~Cola de revisión y aprobación en el panel admin~~ | — (D2: sin revisión) |
 | Rutas con prefijo de idioma, `hreflang` recíproco, sitemap por idioma | 8–12 |
 | Traducción de la interfaz al francés (el prototipo trae el mecanismo) | 2–4 |
 | Localización de correos transaccionales (3 idiomas × plantillas) | 2–4 |
 
-**Multi-divisa (20–30 h)** — asumiendo conversión automática (D1 opción A o C):
+**Multi-divisa (20–30 h)** — D1 resuelta: captura en la moneda que elija el admin, conversión automática para el huésped:
 
 | Parte | Horas |
 |---|---|
 | Tabla `exchange_rates` + job diario + proveedor de tipo de cambio | 4–6 |
+| Captura del precio en cualquiera de las tres monedas (`base_currency`) | 2–4 |
 | Congelado de la tasa en la reserva, columnas de moneda en `bookings` | 4–6 |
 | Stripe multi-divisa + enrutar a Mercado Pago solo en MXN | 6–10 |
 | Política de reembolso a tasa distinta | 2–4 |
@@ -98,7 +99,7 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 
 ---
 
-**Experiencias / tours guiados (176–240 h)** — desglose completo en la sección 20.12. Resumen:
+**Experiencias / tours guiados (180–246 h)** — desglose completo en la sección 20.12. Resumen:
 
 | Parte | Horas |
 |---|---|
@@ -108,7 +109,7 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 | Frontend público (listado, detalle, tarjeta sticky) | 22–28 |
 | Admin (calendario de salidas + sección de guías) | 28–38 |
 | Panel del guía | 14–18 |
-| Reseñas con doble calificación y link externo | 12–16 |
+| Reseñas con doble calificación y **los dos tipos de link** (D11) | 16–22 |
 | Notificaciones, impuestos por producto, reportes, pruebas | 30–46 |
 
 ---

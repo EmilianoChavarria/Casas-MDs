@@ -19,9 +19,16 @@ customers        (id, user_id FK NULL UNIQUE, first_name, last_name, email,
                   -- user_id NULL = reserva creada por el admin, sin cuenta
 
 properties       (id, name, slug, description, address, lat, lng,
-                   capacity, bedrooms, bathrooms, base_price, status,
+                   capacity, bedrooms, bathrooms,
+                   base_price, base_currency CHAR(3) DEFAULT 'MXN',  -- D1
+                   included_guests SMALLINT,                          -- D3
+                   extra_guest_fee DECIMAL NULL,                      -- D3, por noche
+                   cancellation_policy_id FK NULL,                    -- D7, NULL = general
+                   status,
                    rating DECIMAL(2,1) NULL, reviews_count INT DEFAULT 0, ...)
                   -- rating y reviews_count: desnormalizados, ver 5.4
+                  -- base_currency: el admin captura en la moneda que quiera;
+                  --                el huésped siempre ve conversión (5.10)
 
 favorites        (user_id FK, property_id FK, created_at)
                   -- PRIMARY KEY (user_id, property_id); ver 5.8
@@ -50,6 +57,26 @@ price_rules      (id, property_id FK NULL, season_id FK NULL,
 
 holidays         (id, date, name, country)        -- alimenta day_type = holiday
 
+-- ── Descuento por estancia larga (D4) ──
+length_of_stay_discounts (id, property_id FK NULL, min_nights,
+                   adjust_type ENUM(percent,fixed_amount), adjust_value,
+                   priority, is_active)
+                  -- property_id NULL = regla general; una fila por escalón
+                  -- (p.ej. 7 noches -10%, 28 noches -25%). Gana el escalón
+                  -- de mayor min_nights que cumpla la estancia, no se suman.
+
+-- ── Políticas de cancelación (D7) ──
+cancellation_policies (id, name, is_default BOOLEAN DEFAULT 0,
+                   refund_rules JSON, notes)
+                  -- refund_rules: [{ "hours_before": 720, "refund_percent": 100 },
+                  --                 { "hours_before": 168, "refund_percent": 50 }]
+                  -- La propiedad apunta a una; sin apuntar, hereda la default.
+
+-- ── Tipo de cambio (D1) ──
+exchange_rates   (id, base CHAR(3), quote CHAR(3), rate DECIMAL(12,6),
+                   provider, fetched_at)
+                  -- UNIQUE (base, quote, DATE(fetched_at)) — una tasa por día
+
 price_calendar   (property_id FK, date, price, season_id FK NULL, min_nights, computed_at)
                   -- PK (property_id, date); CACHE materializado, no fuente de verdad
 
@@ -71,8 +98,12 @@ bookings         (id, property_id FK, customer_id FK, checkin, checkout,
                    guests, status ENUM(pending,confirmed,cancelled,expired,completed),
                    payment_method ENUM(card,oxxo,spei) NULL,
                    expires_at DATETIME NULL,        -- ver 5.5
-                   subtotal, discount_total, fees_total, taxes_total,
+                   subtotal, extra_guests_total, discount_total,
+                   fees_total, taxes_total,
                    total_price, currency, source,
+                   fx_rate DECIMAL(12,6) NULL,      -- congelada al confirmar (D1)
+                   base_currency_total DECIMAL NULL, -- normalizado a MXN
+                   cancellation_policy_snapshot JSON, -- la vigente al reservar (D7)
                    invoice_requested BOOLEAN DEFAULT 0, invoice_notes TEXT NULL,
                    terms_version_accepted VARCHAR, terms_accepted_at DATETIME, ...)
                   -- facturación: ver 5.7 · términos aceptados: ver 5.9
@@ -244,6 +275,22 @@ customers ──1:N─> bookings
 
 **Índices adicionales:** `users(email)` UNIQUE, `customers(user_id)` UNIQUE, `customers(email)`, `social_accounts(provider, provider_user_id)` UNIQUE.
 
+#### Alta del personal: solo por invitación (D6)
+
+**Decisión del cliente:** el administrador da de alta al personal con su correo. Esa persona puede entrar con Google, y si el correo coincide, se vincula a la cuenta que ya existe. **Sin correo dado de alta previamente, no hay acceso al panel.**
+
+Es la forma correcta, y no solo la más cómoda: convierte el panel en un sistema **cerrado por invitación**. La alternativa —permitir que cualquiera se registre y luego darle rol— deja una ventana en la que existen cuentas sin rol definido en la misma tabla que los administradores.
+
+```
+users.role_id        -- asignado por quien invita, nunca por quien se registra
+users.invited_at     -- alta creada desde el panel, sin contraseña todavía
+users.password       -- NULL hasta que la persona la fija o entra con Google
+```
+
+⚠️ **La vinculación exige `email_verified = true` de Google** (regla de 7.1.1). Sin esa comprobación, quien logre crear una cuenta de Google con el correo de un administrador entra al panel con sus permisos. Es la diferencia entre "vinculamos por correo" y un *account takeover*.
+
+⚠️ **El rol nunca se deduce del correo ni del dominio.** Se asigna explícitamente al invitar. Una regla del tipo "si el correo es de tal dominio, es admin" es una escalada de privilegios esperando a que alguien registre un alias.
+
 ### 5.7 Facturación (CFDI) — fuera del alcance inicial
 
 **Decisión: el sistema no timbra facturas.** El huésped que la necesite marca una casilla en el checkout, se levanta un aviso al admin y la factura se emite por fuera (portal del contador o del SAT), con los datos de la reserva.
@@ -300,6 +347,59 @@ Cada reserva registra **qué versión de los términos aceptó el huésped y cu�
 **Es el mismo principio que el precio congelado (15.1) y la política de cancelación congelada (D7):** ante una disputa por una cancelación, hay que poder demostrar qué condiciones estaban vigentes **en el momento de reservar**, no las de hoy. Sin este registro, cambiar los términos reescribe retroactivamente lo que cada huésped aceptó — que es justo lo que una disputa pone a prueba.
 
 Las páginas viven en `/legal/{privacidad,terminos,cookies}`, en los tres idiomas, enlazadas desde el pie de página y desde el checkout. **El contenido lo aporta el cliente o su abogado** (duda **D8**); el desarrollo construye la estructura, el versionado y el registro de aceptación.
+
+### 5.10 Moneda de captura y conversión (D1)
+
+**Decisión del cliente:** el administrador captura el precio **en la moneda que quiera** —MXN, USD o CAD— y puede cambiar de una a otra. **El huésped siempre ve el precio convertido automáticamente** a su moneda.
+
+```
+properties.base_price      DECIMAL     -- el número que capturó el admin
+properties.base_currency   CHAR(3)     -- en qué moneda lo capturó
+```
+
+Tres consecuencias que conviene tener claras antes de escribir el motor:
+
+**1. `base_currency` no es una preferencia de visualización, es parte del precio.** Un `base_price = 150` significa cosas muy distintas con `MXN` o con `USD`. Guardar el número sin su moneda es el error clásico que aparece meses después, cuando alguien captura una casa en dólares.
+
+**2. La moneda base de reportes es MXN, y es otra cosa.** Cada reserva guarda `fx_rate` y `base_currency_total` para que los ingresos se puedan sumar en una sola moneda sin volver a consultar el tipo de cambio de hace seis meses. Sin ese campo, un reporte anual mezcla tres monedas o depende de una tasa que ya cambió.
+
+**3. La tasa se congela al confirmar.** Es el mismo principio del precio congelado (15.1): el total que aceptó el huésped no puede moverse porque el dólar subió al día siguiente.
+
+⚠️ **El redondeo se aplica al mostrar, nunca al guardar.** Convertir, redondear, y volver a convertir para el cobro produce un total distinto del que vio el huésped. Se guarda el importe exacto y solo se redondea la presentación.
+
+⚠️ **Cambiar `base_currency` de una propiedad no convierte el precio.** Si el admin pasa una casa de MXN a USD, `base_price = 2500` pasaría a significar 2,500 dólares. La interfaz debe ofrecer explícitamente convertir el importe o dejarlo tal cual, y no elegir por él.
+
+---
+
+### 5.11 Cargo por huésped adicional (D3)
+
+```
+properties.included_guests    SMALLINT    -- cuántos entran en el precio base
+properties.extra_guest_fee    DECIMAL     -- por persona y POR NOCHE
+```
+
+El cargo entra al desglose **por noche**, junto al precio de la noche, y no como una línea suelta al final: así una estancia que cruza dos temporadas cobra el extra de cada noche que corresponde, y el congelado de `booking_nights` sigue siendo un reflejo fiel de lo cobrado.
+
+⚠️ **`included_guests` no sustituye a `capacity`.** Son cosas distintas: `capacity` es el máximo legal y físico de la casa; `included_guests` es cuántos entran en el precio. Una casa puede admitir 8 e incluir 4.
+
+---
+
+### 5.12 Política de cancelación (D7)
+
+**Decisión del cliente:** una política general, y la posibilidad de fijar una distinta para casas concretas.
+
+```
+cancellation_policies (id, name, is_default, refund_rules JSON, notes)
+properties.cancellation_policy_id   FK NULL   -- NULL = hereda la default
+```
+
+Es el mismo patrón de herencia que ya usan las temporadas y las promociones en este esquema: **sin fila, aplica la general**. Evita duplicar la política en las 50 casas y evita que cambiar la general obligue a editarlas una por una.
+
+**`refund_rules` es JSON a propósito.** Una política es una lista de escalones (`720 h antes → 100%`, `168 h antes → 50%`) cuyo número varía por política. Modelarlo como columnas obliga a inventar `refund_1`, `refund_2`… y a migrar cuando alguien quiera tres escalones.
+
+⚠️ **La política se congela en la reserva** (`cancellation_policy_snapshot`). Si el cliente endurece la política en noviembre, quien reservó en agosto conserva la que aceptó. Sin el snapshot, un cambio de configuración reescribe retroactivamente el contrato de todas las reservas vivas — exactamente lo que una disputa de tarjeta pone a prueba.
+
+---
 
 ⚠️ **Traslape de temporadas:** MySQL 8 no tiene *exclusion constraints* sobre rangos de fechas (PostgreSQL sí, con `EXCLUDE USING gist`). Por eso el traslape de `seasons` se valida en la capa de aplicación (FormRequest) y la ambigüedad restante se resuelve con la regla determinista de prioridad de la sección 15.3 — nunca se deja al azar del orden de consulta.
 

@@ -31,7 +31,9 @@
 - El **chat es independiente de todo lo demás** — no bloquea ni es bloqueado por ninguna otra fase. Puede adelantarse si hace falta demo temprana, o posponerse tras el lanzamiento sin afectar el resto. Es la fase con más margen de reprogramación (ver 13.4).
 - Las **experiencias van en la fase 15**, después de reservas, pagos y dashboard: reutilizan el motor de pagos, `customers` y el sistema de diseño, así que construirlas antes obligaría a rehacer esas piezas. **Con una excepción que sí es de la fase 2:** `payments` debe nacer **polimórfico** aunque el módulo se construya al final (sección 20.7). Convertirla después, con dinero real y webhooks en producción, es la parte cara.
 
-**Fases bloqueadas por dudas del cliente:** la 6 depende de **D1** y **D5**, la 8 de **D2**, la 9 de **D6**, parte de la 5 de **D3** y **D4**, y la 15 de **D9–D12** (experiencias). La fase 17 está bloqueada por **D8** (textos legales), que impide activar cobros reales y publicar la app de Google. Ver [`dudas-cliente.md`](../dudas-cliente.md).
+**Fases desbloqueadas (respuestas del 25-ago-2026):** las fases 5, 6, 8, 9 y 15 ya tienen sus decisiones cerradas — **D1** a **D7**, **D9**, **D11** y **D12**. Ver el resumen de respuestas en [`dudas-cliente.md`](../dudas-cliente.md).
+
+**Lo que sigue bloqueado:** el total de las experiencias depende de **D10** (impuestos del tour, pendiente del contador) y la fase 17 sigue bloqueada por **D8** (textos legales, en preparación con un abogado), que impide activar cobros reales y publicar la app de Google. Ninguno de los dos frena el desarrollo: frenan la salida a producción.
 
 ---
 
