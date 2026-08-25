@@ -2,6 +2,8 @@
 
 **Stack:** Next.js (React + TS) · Laravel 12 API REST · MySQL 8 · Sanctum · S3/R2 · Redis · Docker · Nginx · GitHub Actions
 
+**Dos productos en el mismo sistema:** renta de casas (secciones 1–19) y **experiencias / tours guiados** ([sección 20](arquitectura/20-experiencias-tours-guiados.md)), con inventario, panel de guía y reseñas propias.
+
 Este README es solo el **índice**. El contenido está dividido en dos bloques: la arquitectura del sistema (carpeta [`arquitectura/`](arquitectura/)) y los servicios externos contratables (un `.md` por servicio, en [`servicios/`](servicios/)).
 
 > ❓ **[`dudas-cliente.md`](dudas-cliente.md)** — decisiones pendientes que dependen del negocio, no de lo técnico. Cada una con contexto, opciones y qué se bloquea mientras no se resuelva.
@@ -31,6 +33,7 @@ Este README es solo el **índice**. El contenido está dividido en dos bloques: 
 | 17 | Sistema de diseño del frontend | [`17-sistema-de-diseno-frontend.md`](arquitectura/17-sistema-de-diseno-frontend.md) |
 | 18 | Estrategia de pruebas | [`18-estrategia-de-pruebas.md`](arquitectura/18-estrategia-de-pruebas.md) |
 | 19 | Notificaciones al huésped | [`19-notificaciones-al-huesped.md`](arquitectura/19-notificaciones-al-huesped.md) |
+| 20 | **Experiencias (tours guiados)** | [`20-experiencias-tours-guiados.md`](arquitectura/20-experiencias-tours-guiados.md) |
 
 ---
 
