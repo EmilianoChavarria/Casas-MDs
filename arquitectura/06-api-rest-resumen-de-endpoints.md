@@ -43,7 +43,6 @@ POST   /api/v1/promotions/validate                          # { code, property_i
 POST   /api/v1/bookings
 GET    /api/v1/bookings/{id}/status
 POST   /api/v1/webhooks/stripe
-POST   /api/v1/webhooks/mercadopago
 ```
 
 ### Reseñas (sección 5.4)

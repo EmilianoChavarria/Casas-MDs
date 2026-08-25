@@ -129,7 +129,7 @@ En la conversación se mencionó un 3%. **Ese número era un ejemplo de colchón
 
 ### Dato adicional que el cliente debe conocer
 
-**Si el huésped paga en dólares, el pago se procesa obligatoriamente por Stripe.** Mercado Pago opera esencialmente en pesos mexicanos. Es decir: la moneda que elija el huésped determina qué procesador cobra, y por tanto qué comisión se paga. Los pagos en pesos pueden seguir yendo por Mercado Pago, que suele ser más conveniente en México.
+**Todos los cobros van por Stripe**, que opera en las tres monedas. ⚠️ Cobrar en moneda extranjera tiene una comisión de conversión adicional sobre la de la transacción: un pago en dólares deja algo menos que el mismo importe en pesos. Es un argumento a favor de la opción C de esta duda, que absorbe ese cargo en el tipo de cambio.
 
 ### Otras dos cosas que hay que definir con el cliente
 
@@ -482,7 +482,7 @@ Es deliberado y no es negociable desde lo técnico: cambiar la política retroac
 
 ### Qué se bloquea mientras no se responda
 
-El flujo de cancelación completo: pantalla del huésped, ejecución del reembolso contra Stripe o Mercado Pago, y liberación de fechas. **También obliga a una tabla nueva de reembolsos** — la de pagos actual no puede registrar devoluciones parciales, porque un reembolso no es "el pago cambió de estado", es un movimiento aparte con su propia referencia en el procesador.
+El flujo de cancelación completo: pantalla del huésped, ejecución del reembolso contra Stripe, y liberación de fechas. **También obliga a una tabla nueva de reembolsos** — la de pagos actual no puede registrar devoluciones parciales, porque un reembolso no es "el pago cambió de estado", es un movimiento aparte con su propia referencia en el procesador.
 
 El desarrollo puede avanzar con el valor por omisión de arriba, pero **no debe salir a producción sin la política confirmada por escrito**: es lo que el huésped acepta al reservar.
 
@@ -499,7 +499,7 @@ No es un trámite opcional. **Tres cosas que ya están decididas no se pueden ac
 | Bloqueo | Consecuencia si falta |
 |---|---|
 | **Publicar la app de Google** (para "Continuar con Google") | Google exige una política de privacidad accesible. Sin publicarla, la app queda con un **tope de 100 usuarios** |
-| **Activar Stripe y Mercado Pago en producción** | Ambos exigen términos y condiciones y política de reembolso visibles antes de permitir cobros reales |
+| **Activar Stripe en producción** | Exige términos y condiciones y política de reembolso visibles antes de permitir cobros reales |
 | **Cumplimiento de la LFPDPPP** | El aviso de privacidad es obligatorio para tratar datos personales de huéspedes |
 
 El desarrollo construye las páginas, las traduce a los tres idiomas y registra qué versión aceptó cada huésped. **El contenido tiene que aportarlo el cliente o su abogado** — es responsabilidad legal de quien opera el negocio.
@@ -518,7 +518,7 @@ Esta lista sale de las decisiones ya tomadas. Entregársela al abogado le ahorra
 - **Inicio de sesión con Google:** se recibe nombre, correo verificado, foto e idioma. Implica que Google sabe que la persona usa este sitio.
 - **Chat con la administración:** los mensajes se conservan **12 meses** si no hubo reserva, y **5 años** si la conversación está vinculada a una reserva.
 - **Traducción automática:** las descripciones de las propiedades se procesan con DeepL, un servicio externo. (Las reseñas y los mensajes de chat **no** se envían a traducir.)
-- **Procesadores de pago:** Stripe y Mercado Pago reciben los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
+- **Procesador de pago:** Stripe recibe los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
 - **Imágenes y archivos** almacenados en Cloudflare R2.
 - **Correos automáticos** que se envían y cómo darse de baja de la solicitud de reseña.
 - ⚠️ **Datos de salud de los tours** (sección 20.9): restricciones alimentarias, alergias, "no sabe nadar", movilidad. Son **datos personales sensibles** bajo la LFPDPPP y requieren consentimiento expreso. Hay que decir para qué se usan (seguridad del tour), quién los ve (el guía asignado) y cuánto se conservan.

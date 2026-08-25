@@ -20,7 +20,7 @@ src/
 │   │   │   └── [token]/page.tsx      # Captura de reseña — sin sesión, móvil, noindex
 │   │   ├── legal/
 │   │   │   ├── privacidad/page.tsx   # exigido por Google OAuth y LFPDPPP
-│   │   │   ├── terminos/page.tsx     # exigido por Stripe y Mercado Pago
+│   │   │   ├── terminos/page.tsx     # exigido por Stripe
 │   │   │   └── cookies/page.tsx
 │   │   └── layout.tsx
 │   ├── (admin)/

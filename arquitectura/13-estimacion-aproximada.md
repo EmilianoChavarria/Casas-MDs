@@ -93,7 +93,7 @@ Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuev
 | Tabla `exchange_rates` + job diario + proveedor de tipo de cambio | 4–6 |
 | Captura del precio en cualquiera de las tres monedas (`base_currency`) | 2–4 |
 | Congelado de la tasa en la reserva, columnas de moneda en `bookings` | 4–6 |
-| Stripe multi-divisa + enrutar a Mercado Pago solo en MXN | 6–10 |
+| Stripe multi-divisa (una sola pasarela, ver 10) | 4–8 |
 | Política de reembolso a tasa distinta | 2–4 |
 | Normalizar reportes de ingresos a moneda base | 4–4 |
 

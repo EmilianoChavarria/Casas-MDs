@@ -85,7 +85,7 @@ jobs:
 Declararlo evita discusiones después:
 
 - **Código de terceros.** No se prueba que Stripe cobre ni que Reverb entregue mensajes. Sí se prueba **la integración propia**: que el webhook se procese bien, que el evento se emita al canal correcto.
-- **Llamadas reales a servicios externos.** Stripe, Mercado Pago, DeepL y Google se simulan con *fakes*. Una suite que depende de la red es lenta e inestable, y gasta cuota.
+- **Llamadas reales a servicios externos.** Stripe, DeepL y Google se simulan con *fakes*. Una suite que depende de la red es lenta e inestable, y gasta cuota.
 - **La interfaz de administración**, más allá de humo. Es la superficie con más pantallas y menos riesgo silencioso.
 - **Rendimiento y carga.** Queda fuera hasta que existan datos reales de tráfico (sección 11).
 
