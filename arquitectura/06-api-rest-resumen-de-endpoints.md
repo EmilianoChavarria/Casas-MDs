@@ -119,6 +119,68 @@ GET                   /api/v1/admin/reports/favorites       # señal de demanda:
 
 `POST /admin/pricing/preview` es deliberado: deja al admin ver el efecto de una temporada nueva sobre los próximos 12 meses **antes** de guardarla. Un error de configuración de precios es caro y silencioso.
 
+### Experiencias — público (sección 20)
+```
+GET    /api/v1/experiences?category=naturaleza|mar|gastronomia&date_from=
+GET    /api/v1/experiences/{slug}
+GET    /api/v1/experiences/{slug}/departures?month=2026-09   # fecha, hora, cupo restante, precio
+GET    /api/v1/experiences/{slug}/reviews?page=              # solo published + consent_publish
+GET    /api/v1/guides/{slug}                                 # perfil público del guía
+POST   /api/v1/experience-bookings/quote                     # desglose; NO aparta cupo
+POST   /api/v1/experience-bookings                           # { departure_id, seats, customer }
+GET    /api/v1/experience-bookings/{id}/status
+```
+
+`POST /experience-bookings` es el único que aparta cupo, y lo hace con `lockForUpdate` sobre la salida (20.3). Devuelve **422 `not_enough_seats`** con el número real disponible en el cuerpo, para que la interfaz pueda corregir el selector en vez de mostrar un error genérico.
+
+⚠️ `GET /experiences/{slug}/departures` es la consulta que alimenta el mini calendario. Devuelve `seats_left`, no `seats_taken`: el frontend no debe tener que restar, y el cupo total es información interna.
+
+### Reseñas de experiencia — link externo, sin sesión
+```
+GET    /api/v1/r/{token}                     # datos del tour y del guía para pintar el formulario
+POST   /api/v1/r/{token}                     # { rating_experience, rating_guide, comment?, consent }
+```
+
+Ambas rutas van con `throttle:5,60` por IP y fuera de `auth:sanctum`. El `GET` devuelve **404 para un token caducado o inexistente** — nunca un mensaje que confirme que el token existió.
+
+### Experiencias — panel del guía (`role = guide`)
+```
+GET    /api/v1/guide/summary                        # carga de la semana
+GET    /api/v1/guide/departures?from=&to=           # SOLO las suyas (scope, no policy)
+GET    /api/v1/guide/departures/{id}                # roster: personas, pagado sí/no, notas
+GET    /api/v1/guide/departures/{id}/review-link    # token + URL lista para compartir
+GET    /api/v1/guide/reviews                        # sus reseñas
+```
+
+⚠️ Estos endpoints **filtran por `guide_id` en la consulta**, no solo con una policy. Un listado nunca pasa por `authorize()` fila a fila (20.4).
+
+### Experiencias — administración
+```
+GET|POST|PUT|DELETE  /api/v1/admin/experiences[/{id}]
+POST                  /api/v1/admin/experiences/{id}/images
+PUT                   /api/v1/admin/experiences/{id}/items       # incluye / no incluye
+
+GET|POST|PUT|DELETE  /api/v1/admin/guides[/{id}]
+PATCH                 /api/v1/admin/guides/{id}/deactivate       # 409 si tiene salidas futuras
+POST                  /api/v1/admin/guides/{id}/invite           # crea el user con role=guide
+GET                   /api/v1/admin/guides/{id}/reviews
+
+GET                   /api/v1/admin/departures?experience_id=&from=&to=
+POST                  /api/v1/admin/departures                   # incluye repetición en lote
+PUT                   /api/v1/admin/departures/{id}              # 422 si capacity < seats_taken
+PATCH                 /api/v1/admin/departures/{id}/cancel       # { reason } — reembolsa y avisa
+GET                   /api/v1/admin/departures/{id}/attendees
+GET                   /api/v1/admin/departures/{id}/review-link
+
+PATCH                 /api/v1/admin/experience-reviews/{id}/hide
+PATCH                 /api/v1/admin/experience-reviews/{id}/unhide
+
+GET                   /api/v1/admin/reports/experiences          # ocupación e ingresos
+GET                   /api/v1/admin/reports/guides               # tours, ocupación, calificación
+```
+
+`POST /admin/departures` acepta `repeat: { weekdays: [2,4], weeks: 8 }` y responde con el resumen del lote (`created`, `skipped` por colisión de `UNIQUE(experience_id, starts_at)`), no con un error si alguna fecha ya existía.
+
 ### Ejemplo de respuesta (`GET /api/v1/properties/{slug}`)
 
 ```json

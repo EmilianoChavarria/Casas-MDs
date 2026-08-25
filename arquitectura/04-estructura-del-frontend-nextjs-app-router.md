@@ -11,6 +11,13 @@ src/
 │   │   │   └── [slug]/
 │   │   │       ├── page.tsx          # Detalle (SSR/ISR)
 │   │   │       └── BookingWidget.tsx # Client Component
+│   │   ├── experiencias/             # sección 20
+│   │   │   ├── page.tsx              # Listado + filtro por categoría (Server Component)
+│   │   │   └── [slug]/
+│   │   │       ├── page.tsx          # Detalle (SSR) — galería, guía, punto de encuentro
+│   │   │       └── DepartureWidget.tsx  # Client: mini calendario + cupo + personas
+│   │   ├── r/
+│   │   │   └── [token]/page.tsx      # Captura de reseña — sin sesión, móvil, noindex
 │   │   ├── legal/
 │   │   │   ├── privacidad/page.tsx   # exigido por Google OAuth y LFPDPPP
 │   │   │   ├── terminos/page.tsx     # exigido por Stripe y Mercado Pago
@@ -27,8 +34,18 @@ src/
 │   │   │   ├── chat/
 │   │   │   │   ├── page.tsx          # bandeja de conversaciones
 │   │   │   │   └── [conversationId]/page.tsx
+│   │   │   ├── experiences/          # sección 20
+│   │   │   │   ├── page.tsx          # catálogo de experiencias
+│   │   │   │   ├── departures/       # calendario de salidas + panel de la salida
+│   │   │   │   └── guides/           # equipo de guías + detalle por guía
 │   │   │   └── reports/
 │   │   └── layout.tsx                # Protegido por middleware
+│   ├── (guide)/                      # panel del guía — role = guide (sección 20.8.C)
+│   │   ├── guia/
+│   │   │   ├── page.tsx              # resumen de carga + próximos tours
+│   │   │   ├── [departureId]/page.tsx   # roster + link de reseña
+│   │   │   └── encuesta/page.tsx     # vista previa de la encuesta del huésped
+│   │   └── layout.tsx                # Protegido por middleware (rol distinto de admin)
 │   ├── api/                          # (opcional) BFF routes / proxy
 │   ├── layout.tsx
 │   └── middleware.ts                 # Protección de rutas admin
@@ -54,6 +71,14 @@ src/
 │   │   ├── SeasonCalendar.tsx        # temporadas pintadas por color sobre el año
 │   │   ├── SeasonForm.tsx
 │   │   └── PricingPreview.tsx        # simulación antes de guardar
+│   ├── experience/                   # sección 20
+│   │   ├── ExperienceCard.tsx
+│   │   ├── ExperienceGallery.tsx     # mosaico
+│   │   ├── GuideProfile.tsx          # bio + métricas de confianza
+│   │   ├── MeetingPointMap.tsx       # reutiliza SingleLocationMap (Leaflet, 17.9)
+│   │   ├── DepartureCalendar.tsx     # mini calendario con cupo restante por fecha
+│   │   ├── SeatSelector.tsx          # limitado al cupo de la fecha (20.3)
+│   │   └── ReviewForm.tsx            # compartido por /r/[token] y la vista previa del guía
 │   └── chat/
 │       ├── ChatWidget.tsx            # burbuja flotante del sitio público
 │       ├── ChatWindow.tsx

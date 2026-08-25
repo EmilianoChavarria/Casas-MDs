@@ -29,6 +29,10 @@ Los tres primeros son exactamente lo que una prueba automatizada atrapa y una pe
 | **Webhooks de pago** | Idempotencia: el mismo evento entregado tres veces produce un solo pago. Los proveedores reintentan por diseño |
 | **Vinculación de cuentas OAuth** | Las cinco reglas de la sección 7.1.1, en especial que un `email_verified = false` **no** vincule |
 | **Cancelaciones** | Que el reembolso y la liberación de `availability` ocurran en la misma transacción, y que un fallo del reembolso no libere fechas |
+| **Cupo de experiencias** (sección 20.3) | Dos reservas **concurrentes** por la última plaza: una confirma, la otra recibe `not_enough_seats` con el cupo real. Y que `seats_taken` quede correcto |
+| **Aislamiento del guía** (20.4) | Un guía autenticado **no** obtiene salidas ni asistentes de otro guía, ni llamando la API directamente. Y que el roster no incluya totales ni método de pago |
+| **Mínimo para operar** (20.5) | Salida bajo el mínimo → `cancelled`, reembolso del 100% a todos y plazas liberadas, todo en la misma transacción |
+| **Token de reseña** (20.6) | Token caducado, token inexistente y token que ya alcanzó el tope por cupo: los tres rechazados. Y que un token no se emita antes de `completed` |
 
 **Pruebas de humo — se escriben, pero no bloquean:** CRUD de propiedades y amenidades, listados con filtros, subida de imágenes, login con contraseña, endpoints de lectura del chat.
 

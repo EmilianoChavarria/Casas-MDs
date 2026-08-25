@@ -11,6 +11,20 @@
 ~~2. Mapa embebido en la página de detalle~~ → Leaflet ([`13-mapas-tiles.md`](13-mapas-tiles.md))
 ~~3. Mapa de búsqueda con pines~~ → Leaflet ([`13-mapas-tiles.md`](13-mapas-tiles.md))
 
+### Punto de encuentro de las experiencias (sección 20.8)
+
+El prototipo de experiencias trae un *embed* de Google Maps para el punto de encuentro. **Recomendación: reutilizar `SingleLocationMap` (Leaflet)** — es exactamente el mismo problema que la ubicación de una casa, y la decisión 17.9 ya está tomada.
+
+Si el cliente insiste en Google para esa pantalla, hay que usar la **Maps Embed API**, no la Maps JavaScript API:
+
+| | Maps **Embed** API (`<iframe>`) | Maps **JavaScript** API |
+|---|---|---|
+| Costo | **Gratis, sin límite** en modo básico (`place`, `view`, `directions`) | ~$7 USD / 1,000 cargas pasada la cuota |
+| Cuota Essentials | No la consume | Sí |
+| Interactividad | La del iframe de Google | Total (pines propios, capas) |
+
+⚠️ **Es gratis, pero no es gratis de mantener:** añade un segundo stack de mapas al proyecto y una API key más que restringir por *referrer*. El costo aquí no es dinero, es superficie.
+
 
 ## Justificación
 

@@ -6,20 +6,81 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 
 | # | Tema | Estado | Bloquea |
 |---|---|---|---|
-| D1 | Moneda y tipo de cambio para huéspedes de Canadá y EE.UU. | ⏳ Pendiente | Motor de precios, checkout, reportes |
-| D2 | Traducción del contenido: asistida, no automática | ⏳ Pendiente | Alta de propiedades, SEO del sitio público |
-| D3 | ¿Se cobra por huésped adicional? | ⏳ Pendiente | Motor de precios, alta de propiedades |
-| D4 | ¿Descuento por estancia larga? | ⏳ Pendiente | Motor de precios, checkout |
-| D5 | Base de cálculo de los impuestos (para el contador) | ⏳ Pendiente | Cálculo del total, facturación |
-| D6 | ¿Cuántos administradores y cómo entran al panel? | ⏳ Pendiente | Autenticación del panel, alta de usuarios |
-| D7 | Política de cancelación y reembolsos | ⏳ Pendiente | Reservas, pagos, disponibilidad |
-| D8 | Textos legales: aviso de privacidad y términos | ⏳ Pendiente | **Publicar app de Google, activar Stripe en producción** |
+| D1 | Moneda y tipo de cambio para huéspedes de Canadá y EE.UU. | ✅ Resuelta | Motor de precios, checkout, reportes |
+| D2 | Traducción del contenido: asistida, no automática | ✅ Resuelta | Alta de propiedades, SEO del sitio público |
+| D3 | ¿Se cobra por huésped adicional? | ✅ Resuelta | Motor de precios, alta de propiedades |
+| D4 | ¿Descuento por estancia larga? | ✅ Resuelta | Motor de precios, checkout |
+| D5 | Base de cálculo de los impuestos (para el contador) | ✅ Resuelta | Cálculo del total, facturación |
+| D6 | ¿Cuántos administradores y cómo entran al panel? | ✅ Resuelta | Autenticación del panel, alta de usuarios |
+| D7 | Política de cancelación y reembolsos | ✅ Resuelta | Reservas, pagos, disponibilidad |
+| D8 | Textos legales: aviso de privacidad y términos | ⏳ En curso | **Publicar app de Google, activar Stripe en producción** |
+| D9 | ¿Los guías entran al sistema, y cómo? | ✅ Resuelta | Panel del guía, rol y autenticación (sección 20) |
+| D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ⏳ Pendiente | Total de la experiencia, facturación |
+| D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
+| D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
+
+---
+
+## Respuestas del cliente — 25 de agosto de 2026
+
+Diez dudas resueltas, una en curso y una pendiente. Cada sección conserva
+su contexto y sus opciones originales; aquí queda lo que se decidió y lo
+que se asumió al aplicarlo.
+
+| # | Decisión |
+|---|---|
+| **D1** | **El administrador captura el precio en la moneda que elija** (MXN, USD o CAD) y puede cambiar entre ellas. **El huésped siempre ve conversión automática.** |
+| **D2** | **Traducción automática sin revisión.** ⚠️ Ver la advertencia de SEO más abajo. |
+| **D3** | **Sí: cargo por huésped adicional.** |
+| **D4** | **Sí, con umbral configurable por el administrador** — él decide a partir de cuántas noches aplica y cuánto. |
+| **D5** | **IVA e ISH sobre el subtotal; DSA como cuota por noche.** |
+| **D6** | **El administrador da de alta al personal con su correo.** Si esa persona entra con Google y el correo coincide, se vincula a la cuenta que ya existe. Sin correo dado de alta, no hay acceso. |
+| **D7** | **Configuración general + política individual por casa** que la sobrescribe. |
+| **D8** | ⏳ Un abogado los está preparando. Se avanza con textos de relleno. |
+| **D9** | **Sí: los guías entran con cuenta propia y panel propio.** |
+| **D10** | ⏳ Pendiente. Se avanza con **solo IVA** y perfil fiscal separado del de las casas. |
+| **D11** | **Los dos:** link por reserva (verificado) y link de grupo como respaldo. |
+| **D12** | **Cobro completo al reservar.** |
+
+### Supuestos aplicados
+
+Lo que las respuestas no precisaban y se resolvió con el criterio más
+conservador. **Si alguno no es lo que el cliente quiso, decirlo ahora sale
+mucho más barato que después de escribir el motor de precios.**
+
+| Sobre | Supuesto |
+|---|---|
+| D1 | La moneda base para reportes y conciliación es **MXN**. Un precio capturado en USD se guarda en USD con su moneda, y se convierte para mostrar y para reportar. La tasa se congela al confirmar la reserva. |
+| D3 | El cargo por persona extra es **por noche**, y se define por propiedad: número de huéspedes incluidos + monto por persona adicional. |
+| D4 | Los descuentos por duración son **varios escalones** (por ejemplo 7 y 28 noches), configurables globalmente y sobrescribibles por propiedad — mismo patrón que D7. |
+| D7 | Las políticas se guardan como **plantillas reutilizables**; la propiedad apunta a una y, si no apunta a ninguna, hereda la general. |
+| D11 | El `AggregateRating` de Google se emite **solo a partir de las reseñas verificadas** (las que llegaron por link de reserva). Las del link de grupo se muestran en el sitio pero no alimentan los datos estructurados. |
+| D12 | Se aceptan OXXO y SPEI **solo si la salida es posterior al vencimiento de la referencia**; si no, se ofrece únicamente tarjeta. La ventana para decidir si una salida opera es de **24 h** salvo indicación contraria. |
+
+### ⚠️ D2 — Riesgo asumido a conciencia
+
+Se eligió traducción **automática sin revisión**. El cliente decide, y así
+queda documentado, pero conviene que sepa exactamente qué se está
+aceptando:
+
+Google trata el contenido traducido a máquina y publicado sin revisión
+como **spam** en sus políticas. La sanción no es sutil: puede afectar al
+posicionamiento de las páginas de propiedades en inglés y francés, que son
+justamente las que se construyen para captar a los huéspedes de EE.UU. y
+Canadá. Es el mismo motivo por el que las reseñas no se traducen (5.4).
+
+**Mitigación que no cuesta horas de desarrollo:** el esquema guarda
+`status` por traducción (`machine` / `reviewed`). Si más adelante alguien
+revisa aunque sea las diez casas más visitadas, se marcan como revisadas
+sin tocar código. Recomendado antes de invertir en anuncios o SEO.
+
+> **D9 a D12 pertenecen al módulo de experiencias** ([`arquitectura/20-experiencias-tours-guiados.md`](arquitectura/20-experiencias-tours-guiados.md)).
 
 ---
 
 ## D1 — ¿Cómo se fija el precio en dólares canadienses y estadounidenses?
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — captura en la moneda que elija el admin; el huésped ve conversión automática
 
 ### Contexto
 
@@ -83,7 +144,7 @@ El motor de precios (sección 15), el checkout y los reportes de ingresos. Se pu
 
 ## D2 — La traducción será asistida, no automática. ¿Lo aprueba el cliente?
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — ⚠️ traducción automática **sin** revisión, riesgo de SEO asumido por el cliente
 
 ### Contexto
 
@@ -154,7 +215,7 @@ El formulario de alta de propiedades y la estrategia de indexación del sitio p�
 
 ## D3 — ¿El precio cambia según cuántas personas se hospeden?
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — sí, cargo por huésped adicional por noche
 
 ### Contexto
 
@@ -204,7 +265,7 @@ El formulario de alta de propiedades y el cálculo de la cotización. Se puede e
 
 ## D4 — ¿Habrá descuento por estancias largas?
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — sí, con umbral y porcentaje configurables por el admin
 
 ### Contexto
 
@@ -268,7 +329,7 @@ El cálculo de la cotización y el desglose que ve el huésped en el checkout. S
 
 ## D5 — Base de cálculo de los impuestos (pregunta para el contador)
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — IVA e ISH sobre el subtotal; DSA como cuota por noche
 
 ### Contexto
 
@@ -323,7 +384,7 @@ El cálculo del total en el checkout y la emisión de facturas. **El sistema se 
 
 ## D6 — ¿Cuántas personas van a administrar el sistema, y cómo entran?
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — alta por correo desde el panel; Google solo vincula si el correo ya existe
 
 ### Contexto
 
@@ -369,7 +430,7 @@ La autenticación del panel de administración. **El sistema de huéspedes con G
 
 ## D7 — Política de cancelación y reembolsos
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Resuelta (25-ago-2026) — política general + individual por casa que la sobrescribe
 
 ### Contexto
 
@@ -429,7 +490,7 @@ El desarrollo puede avanzar con el valor por omisión de arriba, pero **no debe 
 
 ## D8 — Textos legales: aviso de privacidad, términos y condiciones
 
-**Estado:** ⏳ Pendiente · ⚠️ **Bloquea el lanzamiento**
+**Estado:** ⏳ En curso (un abogado los prepara) · ⚠️ **Bloquea el lanzamiento**
 
 ### Por qué esto no puede dejarse para el final
 
@@ -460,6 +521,7 @@ Esta lista sale de las decisiones ya tomadas. Entregársela al abogado le ahorra
 - **Procesadores de pago:** Stripe y Mercado Pago reciben los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
 - **Imágenes y archivos** almacenados en Cloudflare R2.
 - **Correos automáticos** que se envían y cómo darse de baja de la solicitud de reseña.
+- ⚠️ **Datos de salud de los tours** (sección 20.9): restricciones alimentarias, alergias, "no sabe nadar", movilidad. Son **datos personales sensibles** bajo la LFPDPPP y requieren consentimiento expreso. Hay que decir para qué se usan (seguridad del tour), quién los ve (el guía asignado) y cuánto se conservan.
 - Derechos ARCO: cómo ejercerlos y a qué correo.
 
 **Términos y condiciones:**
@@ -471,7 +533,8 @@ Esta lista sale de las decisiones ya tomadas. Entregársela al abogado le ahorra
 - Horarios de entrada y salida.
 - Reglas de la casa: mascotas, fiestas, fumar.
 - Moneda de cobro y, si aplica, tipo de cambio (depende de **D1**).
-- Impuestos incluidos en el precio (depende de **D5**).
+- Impuestos incluidos en el precio (depende de **D5** y, para los tours, de **D10**).
+- **Experiencias / tours** (sección 20): política de cancelación propia (**D12**), qué pasa si la salida se cancela por no alcanzar el mínimo de personas —reembolso íntegro— y a qué hora y dónde es el punto de encuentro.
 
 ### Detalle importante sobre el versionado
 
@@ -482,6 +545,148 @@ Esto significa que **cambiar los términos más adelante es seguro** — no afec
 ### Qué se bloquea mientras no se responda
 
 El lanzamiento a producción, en tres frentes a la vez: cobros reales, acceso con Google más allá de 100 usuarios, y cumplimiento de protección de datos. El desarrollo puede avanzar por completo con textos de relleno, pero **no se puede salir a producción sin los definitivos**.
+
+---
+
+## D9 — ¿Los guías van a entrar al sistema, y cómo inician sesión?
+
+**Estado:** ✅ Resuelta (25-ago-2026) — sí, con panel propio · Amplía **D6**
+
+### Contexto
+
+El módulo de experiencias (sección 20) contempla un **panel propio para el guía**: ve sus tours asignados, la lista de asistentes con sus notas y el link de reseña para compartir con el grupo.
+
+Eso implica que el guía es **un usuario más del sistema**, con rol propio. Pero no todos los clientes quieren eso: si los guías son externos y rotan, dar de alta cuentas puede ser más carga administrativa que beneficio.
+
+El diseño ya contempla las dos formas — `guides.user_id` es opcional — pero hay que saber cuál se usa desde el principio, porque cambia si el panel del guía se construye o no.
+
+### La pregunta concreta
+
+> ¿Quiere que cada guía entre al sistema con su propia cuenta y vea sus tours desde el celular, o prefiere que el administrador le mande la lista de asistentes por WhatsApp o correo antes de cada salida?
+>
+> Y si entran: ¿con contraseña, con un enlace mágico al correo, o con su cuenta de Google?
+
+### Opciones
+
+**Opción A — Los guías entran al panel (lo que muestra el prototipo)**
+
+- ✅ El guía tiene la lista actualizada siempre, sin depender de que alguien se la mande.
+- ✅ Copia y comparte el link de reseña él mismo al terminar el tour, que es cuando más responde la gente.
+- ⚠️ Hay que dar de alta, dar de baja y soportar cuentas de personal que quizá rote.
+- ⚠️ Aumenta la superficie de seguridad: un guía es un usuario con acceso a datos de huéspedes.
+
+**Opción B — Sin panel: el admin manda el roster**
+
+- ✅ Cero gestión de cuentas. Ahorra **14–18 h** de desarrollo.
+- ⚠️ Alguien tiene que acordarse de mandar la lista antes de cada salida, cada día.
+- ⚠️ El link de reseña lo comparte el admin, no el guía — y llega más tarde y peor.
+
+**Recomendación:** con 2–3 guías fijos, la opción B es defendible al arrancar y el panel se añade después. Con guías que rotan o más de cinco, la opción A se paga sola en el primer mes.
+
+### Qué se bloquea mientras no se responda
+
+El sprint S1 del módulo (rol, autenticación e invitación de guías) y la decisión de construir o no el panel del guía completo.
+
+---
+
+## D10 — Impuestos de las experiencias: ¿solo IVA, o también ISH?
+
+**Estado:** ⏳ Pendiente · ⚠️ **Pregunta para el contador** · Amplía **D5**
+
+### Contexto
+
+Las casas llevan tres cargas: **IVA**, **ISH** (Impuesto Sobre Hospedaje) y **DSA**. Un tour guiado **no es hospedaje**, así que en principio:
+
+| Cargo | Casas | Experiencias |
+|---|---|---|
+| IVA 16% | Aplica | **Aplica** |
+| ISH | Aplica | ❌ En principio **no** |
+| DSA / cuota por noche | Aplica | ❌ No |
+
+Pero la tasa de ISH y su base son **estatales**, y algunas entidades gravan servicios turísticos conexos. Esto no se puede decidir desde el lado técnico.
+
+### La pregunta concreta
+
+> Un tour guiado que se vende aparte de la casa, ¿lleva solo IVA, o el estado también grava ese servicio? ¿Y se factura con la misma clave que el hospedaje o con una distinta?
+
+### Por qué importa más de lo que parece
+
+Si se aplica ISH a un tour por copiar la configuración de las casas, se está **cobrando de más al huésped y declarando mal**. Si se omite un impuesto que sí aplica, el faltante lo pone el negocio.
+
+Técnicamente obliga a que el motor de cargos tenga **perfiles fiscales por tipo de producto**, no una configuración global. Es un cambio pequeño si se hace al construir el motor (fase 6) y una refactorización si se hace después.
+
+### Qué se bloquea mientras no se responda
+
+El desglose del total de la experiencia (sprint S3) y su facturación. El desarrollo puede avanzar con "solo IVA" como valor por omisión, pero **no debe salir a producción sin confirmarlo**.
+
+---
+
+## D11 — El link de reseña: ¿uno por grupo o uno por persona?
+
+**Estado:** ✅ Resuelta (25-ago-2026) — los dos: link por reserva (verificado) y link de grupo como respaldo
+
+### Contexto
+
+El diseño pide que el guía comparta **un link con todo el grupo** al terminar el tour. Es cómodo y funciona.
+
+El problema: **ese link no verifica nada**. Cualquiera con la URL puede dejar una reseña — un competidor, un conocido, o el propio guía queriendo subir su calificación. Las reseñas de las casas no tienen ese hueco: solo puede reseñar quien completó una estancia pagada (sección 5.4).
+
+### La pregunta concreta
+
+> Las reseñas de los tours, ¿pueden dejarlas todas las personas del grupo con un mismo link que comparte el guía, o prefiere que a cada quien le llegue su propio link a su correo, para garantizar que solo reseñe quien realmente fue?
+
+### Opciones
+
+**Opción A — Un link por salida (lo que pide el prototipo)**
+
+- ✅ El guía lo comparte en el grupo de WhatsApp en dos segundos, delante de todos.
+- ✅ Máxima tasa de respuesta: se pide en caliente.
+- ⚠️ **No son reseñas verificadas.** Se defiende con caducidad, tope por cupo y límite por IP, pero el hueco existe.
+- ⚠️ **No se pueden emitir estrellas en los resultados de Google** (`AggregateRating`). Publicar datos estructurados de calificaciones sin respaldo verificable es motivo de acción manual de Google — el mismo aviso de la sección 5.4.
+
+**Opción B — Un link por reserva, enviado por correo**
+
+- ✅ Reseña verificada, igual que las casas.
+- ✅ Habilita las estrellas en Google.
+- ⚠️ Llega por correo, no en caliente: responde menos gente.
+- ⚠️ +4–6 h de desarrollo.
+
+**Recomendación:** empezar con **A** (el diseño ya lo pide, y al arrancar el volumen de reseñas es bajo) y dejar **B** preparado en el esquema para migrar sin romper nada. Lo que **no** hay que hacer es usar A y emitir estrellas en Google.
+
+### Qué se bloquea mientras no se responda
+
+El sprint S5 y la decisión de emitir o no datos estructurados de calificación en las páginas de experiencias.
+
+---
+
+## D12 — Cobro y cancelación de las experiencias
+
+**Estado:** ✅ Resuelta (25-ago-2026) — cobro completo al reservar · Amplía **D7**
+
+### Contexto
+
+Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos diferencias que cambian las reglas:
+
+1. **Puede cancelarla el operador**, no solo el huésped: si una salida no alcanza el mínimo de personas para operar, se cancela.
+2. **El ticket es mucho más pequeño.** Un tour de $800 MXN paga proporcionalmente **más comisión de procesador** que una reserva de $10,000, porque la parte fija (~$3 MXN + porcentaje) pesa mucho más.
+
+### Las preguntas concretas
+
+> **1.** ¿Se cobra el tour completo al reservar, o solo un anticipo y el resto en el punto de encuentro?
+>
+> **2.** ¿Con cuánta anticipación puede cancelar un huésped y recibir su dinero de vuelta? (Práctica estándar del sector: reembolso íntegro hasta 24 h antes; sin reembolso después.)
+>
+> **3.** ¿Cuántas horas antes se decide si una salida opera o se cancela por falta de gente? (Sugerido: 24 h.)
+>
+> **4.** ¿Se aceptan pagos en OXXO/SPEI para tours? Una referencia de OXXO tarda hasta ~3 días en pagarse; para un tour que sale el sábado, eso puede no llegar a tiempo.
+
+### Lo que ya está decidido y no se pregunta
+
+⚠️ **Si cancela el operador, el reembolso es del 100 %, sin descontar comisiones.** No es negociable: cancela el negocio, no el cliente. Descontar la comisión de Stripe de un reembolso que el huésped no provocó es una disputa de tarjeta asegurada — y en una disputa, quien cancela pierde.
+
+### Qué se bloquea mientras no se responda
+
+El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.
 
 ---
 

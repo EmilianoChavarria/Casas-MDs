@@ -2,6 +2,8 @@
 
 Esta sección desarrolla el módulo marcado como de **complejidad alta** en la sección 13. Amplía las tablas `seasons` y `price_rules` de la sección 5 con un motor de resolución por noche, temporadas con rangos de fechas automáticos y un subsistema de promociones.
 
+> **Este motor es solo para las casas.** Las experiencias (sección 20) llevan **precio por persona fijo por salida**, capturado al crearla y congelado al reservar: no pasan por temporadas ni por reglas de tipo de día. Sí comparten el congelado de precio, el multi-divisa y —con **perfiles fiscales distintos** (D10)— el motor de cargos e impuestos.
+
 ---
 
 ### 15.1 Principio de diseño
@@ -35,7 +37,8 @@ Reglas invariantes:
        └────────────────────┬────────────────────┘
                             │
        ┌────────────────────▼────────────────────┐
-       │ 3. AJUSTE POR OCUPACIÓN (opcional)       │  ← huéspedes extra sobre base
+       │ 3. HUÉSPED ADICIONAL (D3)                │  ← (guests − included_guests)
+       │    × extra_guest_fee, por noche          │     × cuota, por noche
        └────────────────────┬────────────────────┘
                             │
                    precio de la noche
@@ -43,7 +46,8 @@ Reglas invariantes:
                     Σ (todas las noches)
                             │
        ┌────────────────────▼────────────────────┐
-       │ 4. DESCUENTO POR ESTANCIA LARGA          │  ← weekly / monthly
+       │ 4. DESCUENTO POR ESTANCIA LARGA (D4)     │  ← escalones configurables
+       │    gana el min_nights más alto, no suman │     (7, 28, … noches)
        └────────────────────┬────────────────────┘
                             │
        ┌────────────────────▼────────────────────┐
@@ -61,20 +65,22 @@ Los pasos 1–3 producen el **precio por noche** (lo que se muestra en el calend
 
 #### ⚠️ Estado de cada paso
 
-Tres pasos del pipeline **todavía no tienen modelo de datos**. Están en el diseño del cálculo pero no en el esquema, y dependen de decisiones que no son técnicas:
+✅ **Los seis pasos están cerrados** desde las respuestas del cliente del 25-ago-2026 ([`dudas-cliente.md`](../dudas-cliente.md)).
 
-| Paso | Estado | Bloqueado por |
+| Paso | Estado | Decisión que lo definió |
 |---|---|---|
 | 1. Temporada | ✅ Modelado (`seasons`, `season_property`) | — |
 | 2. Tipo de día | ✅ Modelado (`price_rules`, `holidays`) | — |
-| **3. Ajuste por ocupación** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D3** — ¿se cobra por huésped adicional? |
-| **4. Descuento por estancia larga** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D4** — ¿hay descuento semanal/mensual? |
+| **3. Huésped adicional** | ✅ Modelado (`properties.included_guests`, `extra_guest_fee`) | **D3** — sí se cobra, por persona **y por noche** |
+| **4. Estancia larga** | ✅ Modelado (`length_of_stay_discounts`) | **D4** — sí, con umbral y valor **configurables por el admin** |
 | 5. Promociones | ✅ Modelado (`promotions`, `promotion_redemptions`) | — |
-| **6. Cargos e impuestos** | ❌ **Sin modelo** | [`dudas-cliente.md`](../dudas-cliente.md) **D5** — base de cálculo (contador) |
+| **6. Cargos e impuestos** | ✅ Definido | **D5** — IVA e ISH sobre el subtotal; **DSA como cuota por noche** |
 
-**No implementar el pipeline hasta cerrar los tres.** `PricingService` es la autoridad única del precio (15.1) y añadirle pasos después obliga a revisar el congelado de reservas, las promociones y los reportes. Es el módulo marcado de mayor riesgo en la sección 13 justamente por esto.
+**El paso 3 va dentro del precio de la noche, no al final.** El cargo por persona extra se suma a cada noche antes de totalizar: así una estancia que cruza dos temporadas lo cobra noche a noche y `booking_nights` sigue siendo un reflejo fiel de lo cobrado.
 
-Mientras tanto, los pasos 3, 4 y 6 se pueden dejar como **operaciones neutras** (cargo extra en cero, descuento en cero, sin impuestos) para no bloquear el desarrollo del resto — pero el sistema **no debe salir a producción así**: un total sin IVA, ISH y DSA no es un error de software, es un problema fiscal.
+**El paso 4 no acumula escalones.** Con reglas de 7 y 28 noches, una estancia de 30 aplica **solo la de 28**, no ambas. Gana el `min_nights` más alto que cumpla la estancia. Sumar los dos descuentos es el error que regala un 35% sin que nadie lo haya decidido.
+
+⚠️ **El orden 4 → 5 → 6 importa y no es intercambiable.** El descuento por estancia larga se aplica **antes** que las promociones, y los impuestos se calculan **sobre el subtotal ya descontado**. Invertir el orden cambia el total y, con impuestos de por medio, cambia lo que se declara.
 
 #### Cargos vs. impuestos — por qué van separados (paso 6)
 

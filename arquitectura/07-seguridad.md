@@ -40,6 +40,10 @@ Estas cinco reglas no son recomendaciones; omitir cualquiera abre una vía de ap
 | Manipulación de precios | El precio **nunca** se acepta desde el cliente. `POST /bookings` recalcula el total en el servidor con `PricingService` e ignora cualquier importe enviado en el request (sección 15.1) |
 | Abuso de cupones | `usage_limit` verificado con `SELECT ... FOR UPDATE` dentro de la transacción de reserva, más `usage_limit_per_customer` contra `promotion_redemptions` (sección 15.5) |
 | Cambios de precios y promociones | Auditar en `audit_logs` toda alta/edición de `seasons`, `price_rules` y `promotions` — es dinero, y un cambio silencioso es difícil de rastrear después |
+| **Panel del guía** (sección 20.4) | Policy por `guide_id` **y** filtro explícito en cada consulta del listado. Una policy no protege un listado: nunca pasa por `authorize()` fila a fila. El guía no ve totales, método de pago ni facturación |
+| **Sobreventa de cupo** (20.3) | `SELECT ... FOR UPDATE` sobre la salida dentro de la transacción de reserva. El `max` del selector de personas es interfaz, no control de seguridad |
+| **Link público de reseña** (20.6) | Token aleatorio de 32 bytes (nunca el `id`), caducidad, tope de reseñas igual al cupo confirmado, `throttle:5,60` por IP y `noindex` en la página |
+| **Datos de salud de asistentes** (20.9) | Alergias, restricciones alimentarias y "no sabe nadar" son **datos sensibles** bajo LFPDPPP: consentimiento expreso, cast `encrypted` en reposo y visibles solo para el admin y el guía de esa salida |
 | CSRF | Sanctum lo maneja automático en rutas SPA con cookies; API pura con Bearer no lo requiere |
 | XSS | Next.js escapa por defecto; nunca usar `dangerouslySetInnerHTML` con contenido de usuario sin sanitizar |
 | SQL Injection | Eloquent/Query Builder parametrizado siempre; nunca concatenar SQL crudo |
