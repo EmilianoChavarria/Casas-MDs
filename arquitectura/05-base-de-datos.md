@@ -80,10 +80,12 @@ bookings         (id, property_id FK, customer_id FK, checkin, checkout,
 booking_nights   (id, booking_id FK, date, price, season_id FK NULL, day_type)
                   -- snapshot congelado del precio noche por noche (sección 15.1)
 
-payments         (id, booking_id FK, provider ENUM(stripe,mercadopago,externo),
+payments         (id, payable_type, payable_id,   -- POLIMÓRFICO: bookings o
+                   provider ENUM(stripe,mercadopago,externo),  -- experience_bookings
                    provider_ref, amount, currency, status, paid_at)
                   -- 'externo': cobro fuera del sistema (efectivo, transferencia
                   --            directa, o reserva previa al lanzamiento)
+                  -- INDEX (payable_type, payable_id) · ver sección 20.7
 
 -- ── Chat en tiempo real (detalle completo en sección 16) ──
 conversations    (id, customer_id FK, property_id FK NULL, booking_id FK NULL,
@@ -93,6 +95,16 @@ conversations    (id, customer_id FK, property_id FK NULL, booking_id FK NULL,
 messages         (id, conversation_id FK, sender_type ENUM(customer,admin,system),
                    sender_id NULL, body TEXT NULL, attachment_url NULL,
                    attachment_meta JSON NULL, client_uuid CHAR(36), read_at, created_at)
+
+-- ── Experiencias / tours guiados (esquema completo en la sección 20.2) ──
+experiences            (id, name, slug, category, duration_minutes, meeting_lat/lng, ...)
+guides                 (id, user_id FK NULL UNIQUE, ..., status)
+experience_departures  (id, experience_id FK, guide_id FK NULL, starts_at,
+                         capacity, min_to_operate, seats_taken, status, review_token)
+experience_bookings    (id, departure_id FK, customer_id FK, seats, total_price, status)
+experience_attendees   (id, experience_booking_id FK, full_name, notes_encrypted)
+experience_reviews     (id, departure_id FK, experience_id FK, guide_id FK,
+                         rating_experience, rating_guide, consent_publish, status)
 
 configurations   (id, key, value, type)
 
@@ -113,6 +125,9 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 - `properties N—N promotions` (pivot `promotion_property`; misma convención)
 - `promotions 1—N promotion_redemptions 1—1 bookings`
 - `customers 1—N conversations 1—N messages`
+- `experiences 1—N experience_departures 1—N experience_bookings` (**el inventario es la salida, no el día** — sección 20.1)
+- `guides 0..1—1 users` (mismo patrón nullable que `customers.user_id`, y por el mismo motivo: sección 20.4)
+- `payments N—1 payable` (polimórfico: `bookings` o `experience_bookings`, sección 20.7)
 - `conversations N—1 properties` y `N—1 bookings` (ambas opcionales: una conversación puede no estar anclada a nada)
 
 ### 5.3 Índices recomendados

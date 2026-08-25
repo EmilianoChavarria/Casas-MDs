@@ -2,6 +2,8 @@
 
 Correos automáticos que cubren todo el recorrido de la reserva. Complementa la sección 7 (correo transaccional) y la 16 (avisos del chat).
 
+> **Las experiencias tienen su propio ciclo** —4 correos al huésped y 3 avisos al guía— documentado en [la sección 20.10](20-experiencias-tours-guiados.md). Comparte el mecanismo, el job diario y el `notification_log` de 19.4.
+
 ---
 
 ### 19.1 El ciclo completo
@@ -57,8 +59,9 @@ A diferencia de las descripciones de propiedades (D2), aquí **no aplica la trad
 ### 19.4 Idempotencia: no enviar dos veces
 
 ```
-notification_log (id, booking_id FK, type, locale, sent_at)
-                  -- UNIQUE (booking_id, type)
+notification_log (id, notifiable_type, notifiable_id, type, locale, sent_at)
+                  -- UNIQUE (notifiable_type, notifiable_id, type)
+                  -- polimórfico: bookings y experience_bookings (sección 20.10)
 ```
 
 El `UNIQUE` es la protección real. Si el job diario se ejecuta dos veces —por un reinicio, un despliegue a medias o un solapamiento del scheduler— el segundo intento falla al insertar y no se envía nada.

@@ -5,6 +5,7 @@
 app/
 ├── Console/
 │   └── Commands/
+│       └── ReconcileDepartureSeats.php   # experiences:reconcile-seats (20.3)
 ├── DTOs/
 │   ├── PropertyDTO.php
 │   ├── BookingDTO.php
@@ -18,6 +19,10 @@ app/
 │   ├── PaymentReceived.php
 │   ├── SeasonSaved.php               # dispara RecalculatePriceCalendar
 │   ├── PriceRuleSaved.php
+│   ├── DepartureConfirmed.php        # alcanzó el mínimo para operar
+│   ├── DepartureCancelled.php        # dispara reembolsos y avisos
+│   ├── GuideAssignedToDeparture.php
+│   └── ExperienceReviewSubmitted.php
 │   ├── MessageSent.php               # ShouldBroadcast → presence-conversation.{id}
 │   ├── MessageRead.php               # ShouldBroadcast
 │   └── ConversationAssigned.php      # ShouldBroadcast → admin.inbox
@@ -26,7 +31,10 @@ app/
 │   ├── PaymentFailedException.php
 │   ├── OverlappingSeasonException.php
 │   ├── PromotionNotApplicableException.php
-│   └── PromotionUsageLimitReachedException.php
+│   ├── PromotionUsageLimitReachedException.php
+│   ├── NotEnoughSeatsException.php          # lleva el cupo real disponible (20.3)
+│   ├── DepartureNotBookableException.php
+│   └── InvalidReviewTokenException.php
 ├── Http/
 │   ├── Controllers/
 │   │   └── Api/V1/
@@ -40,6 +48,10 @@ app/
 │   │       │   ├── PromotionController.php
 │   │       │   ├── ConversationAdminController.php
 │   │       │   ├── BookingAdminController.php
+│   │       │   ├── ExperienceController.php           # sección 20
+│   │       │   ├── DepartureController.php            # incl. creación en lote y cancelación
+│   │       │   ├── GuideController.php                # alta, invitación, baja
+│   │       │   ├── ExperienceReviewAdminController.php
 │   │       │   ├── UserController.php
 │   │       │   ├── CustomerController.php
 │   │       │   └── ReportController.php
@@ -50,7 +62,15 @@ app/
 │   │       ├── Chat/
 │   │       │   ├── ConversationController.php
 │   │       │   └── MessageController.php
+│   │       ├── Guide/                                 # panel del guía (sección 20.8.C)
+│   │       │   ├── GuideSummaryController.php
+│   │       │   ├── GuideDepartureController.php       # SIEMPRE filtrado por guide_id
+│   │       │   └── GuideReviewLinkController.php
 │   │       └── Public/
+│   │           ├── ExperienceSearchController.php     # listado + filtros por categoría
+│   │           ├── ExperienceDepartureController.php  # salidas con cupo restante
+│   │           ├── ExperienceBookingController.php    # reserva con lockForUpdate (20.3)
+│   │           ├── ReviewTokenController.php          # GET/POST /r/{token}, sin sesión
 │   │           ├── PropertySearchController.php
 │   │           ├── AvailabilityController.php
 │   │           ├── QuoteController.php
@@ -59,6 +79,7 @@ app/
 │   │           └── PaymentWebhookController.php
 │   ├── Middleware/
 │   │   ├── EnsureUserIsAdmin.php
+│   │   ├── EnsureUserIsGuide.php               # panel del guía (sección 20.4)
 │   │   ├── ResolveGuestConversationToken.php   # acceso de visitante sin cuenta
 │   │   └── LogApiRequests.php
 │   ├── Requests/
@@ -68,6 +89,9 @@ app/
 │   │   ├── Booking/QuoteRequest.php
 │   │   ├── Season/StoreSeasonRequest.php       # valida traslapes (sección 15.3)
 │   │   ├── Promotion/StorePromotionRequest.php
+│   │   ├── Experience/StoreDepartureRequest.php    # valida repetición y capacity >= seats_taken
+│   │   ├── Experience/StoreExperienceBookingRequest.php
+│   │   ├── Experience/StoreExperienceReviewRequest.php
 │   │   └── Chat/StoreMessageRequest.php
 │   └── Resources/
 │       ├── PropertyResource.php
@@ -77,6 +101,10 @@ app/
 │       ├── SeasonResource.php
 │       ├── PromotionResource.php
 │       ├── ConversationResource.php
+│       ├── ExperienceResource.php
+│       ├── DepartureResource.php          # expone seats_left, nunca capacity interna
+│       ├── GuidePublicResource.php        # bio y métricas; sin correo ni teléfono
+│       ├── GuideRosterResource.php        # asistentes SIN datos financieros (20.4)
 │       └── MessageResource.php
 ├── Jobs/
 │   ├── SendBookingConfirmationEmail.php
@@ -84,12 +112,18 @@ app/
 │   ├── RecalculatePriceCalendar.php       # materializa price_calendar
 │   ├── NotifyUnreadMessage.php            # con delay; solo si el destinatario no está presente
 │   ├── PurgeOldConversations.php
+│   ├── EvaluateDepartureMinimum.php       # confirma o cancela por mínimo (20.5)
+│   ├── ExpirePendingExperienceBookings.php
+│   ├── IssueDepartureReviewToken.php      # al pasar a completed (20.6)
 │   └── GenerateOccupancyReport.php
 ├── Listeners/
 │   ├── NotifyAdminOnNewBooking.php
 │   ├── ReleaseHoldOnPaymentFailed.php
 │   ├── ReleasePromotionOnBookingCancelled.php   # decrementa used_count
 │   ├── PostSystemMessageOnBookingConfirmed.php  # mensaje sender_type=system en el hilo
+│   ├── RecalculateExperienceRating.php          # rating_experience → experiences.rating
+│   ├── RecalculateGuideRating.php               # rating_guide → guides.rating
+│   ├── ReleaseSeatsOnExperienceBookingCancelled.php
 │   └── QueuePriceCalendarRecalculation.php
 ├── Models/
 │   ├── Property.php
@@ -111,15 +145,30 @@ app/
 │   ├── AuditLog.php
 │   ├── Role.php
 │   ├── SocialAccount.php
+│   ├── Experience.php
+│   ├── ExperienceImage.php
+│   ├── ExperienceItem.php
+│   ├── ExperienceDeparture.php
+│   ├── ExperienceBooking.php
+│   ├── ExperienceAttendee.php          # notes_encrypted con cast 'encrypted' (20.9)
+│   ├── ExperienceReview.php
+│   ├── Guide.php
 │   └── User.php
 ├── Notifications/
 │   ├── BookingConfirmedNotification.php
 │   ├── BookingCancelledNotification.php
+│   ├── ExperienceBookingConfirmedNotification.php
+│   ├── DepartureReminderNotification.php          # huésped, salida − 24 h
+│   ├── DepartureCancelledNotification.php
+│   ├── GuideAssignedNotification.php
+│   ├── GuideRosterNotification.php                # guía, salida − 24 h
 │   └── NewChatMessageNotification.php
 ├── Policies/
 │   ├── PropertyPolicy.php
 │   ├── BookingPolicy.php
 │   ├── PromotionPolicy.php
+│   ├── DeparturePolicy.php             # un guía solo ve sus salidas (20.4)
+│   ├── ExperienceBookingPolicy.php
 │   └── ConversationPolicy.php
 ├── Repositories/
 │   ├── Contracts/
@@ -143,6 +192,10 @@ app/
 │   │   ├── DayTypeResolver.php         # weekday | weekend | holiday
 │   │   ├── PromotionService.php        # elegibilidad, combinación y canje con lock
 │   │   └── PriceCalendarBuilder.php
+│   ├── Experiences/
+│   │   ├── DepartureService.php        # creación en lote, estados, cancelación
+│   │   ├── SeatAllocationService.php   # lockForUpdate + validación de cupo (20.3)
+│   │   └── ReviewTokenService.php      # emisión, caducidad, tope por cupo (20.6)
 │   ├── ChatService.php                 # persistir → broadcast → notificar
 │   ├── BookingService.php
 │   ├── PaymentService.php
@@ -153,6 +206,8 @@ app/
 └── Helpers/
     └── DateRangeHelper.php
 ```
+
+`routes/guide.php` agrupa el panel del guía bajo `auth:sanctum` + `EnsureUserIsGuide`. ⚠️ El middleware **no basta**: cada consulta filtra además por `guide_id` (sección 20.4), porque una policy no protege un listado.
 
 `routes/channels.php` define la autorización de los canales de chat (`conversation.{id}`, `admin.inbox`) — ver sección 16.5.
 

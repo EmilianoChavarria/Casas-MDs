@@ -2,6 +2,8 @@
 
 Esta sección desarrolla el módulo marcado como de **complejidad alta** en la sección 13. Amplía las tablas `seasons` y `price_rules` de la sección 5 con un motor de resolución por noche, temporadas con rangos de fechas automáticos y un subsistema de promociones.
 
+> **Este motor es solo para las casas.** Las experiencias (sección 20) llevan **precio por persona fijo por salida**, capturado al crearla y congelado al reservar: no pasan por temporadas ni por reglas de tipo de día. Sí comparten el congelado de precio, el multi-divisa y —con **perfiles fiscales distintos** (D10)— el motor de cargos e impuestos.
+
 ---
 
 ### 15.1 Principio de diseño
