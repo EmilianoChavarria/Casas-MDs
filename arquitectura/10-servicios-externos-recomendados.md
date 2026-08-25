@@ -26,6 +26,21 @@ Cada servicio tiene su propio README con: para qué se usa, justificación, prec
 
 **Google Maps va al final a propósito:** solo se necesita para el autocompletado del formulario admin. Crear la cuenta antes deja una API key sin uso y sin restricciones dando vueltas — el escenario exacto de la factura sorpresa.
 
+### El módulo de experiencias no añade ningún servicio
+
+El módulo de tours guiados (sección 20) **no obliga a contratar nada nuevo**. Su costo recurrente adicional es **~$0 USD/mes**; lo que cuesta es el desarrollo. Resumen de impacto (detalle en 20.11):
+
+| Servicio | Impacto |
+|---|---|
+| R2 | + galerías de experiencias y fotos de guías: **< 1 GB**, dentro del free tier |
+| Correo | +7 plantillas; sigue muy por debajo de los 3,000/mes de Resend free |
+| Tiles de mapa | Un mapa más por página de detalle; se suma al conteo del proveedor |
+| Stripe / MP | Sin costo fijo nuevo. ⚠️ La comisión **pesa más en tickets pequeños**: un tour de $800 MXN deja proporcionalmente menos que una reserva de $10,000 |
+| Google Maps | **$0** si se reutiliza Leaflet. La Maps **Embed** API también es gratis; la Maps **JavaScript** API no — no usarla |
+| Reverb | No se usa: el módulo no necesita tiempo real |
+
+⚠️ **WhatsApp Business Cloud API: no contratar.** "Enviar el link de reseña al grupo" se resuelve con un deep link `wa.me` abierto desde el teléfono del guía, gratis. La API de Meta exige verificación de negocio, plantillas aprobadas y cobra por conversación — desproporcionado para este uso.
+
 **Reverb no se contrata:** es un paquete del propio Laravel, self-hosted en el VPS ya pagado. No añade costo recurrente ni cuenta externa — solo el subdominio `ws.midominio.com` en el DNS de Cloudflare (paso 2) y el proceso bajo Supervisor. Pusher/Ably quedan documentados como plan B, no contratados.
 
 ---
