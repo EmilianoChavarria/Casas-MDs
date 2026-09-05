@@ -205,7 +205,11 @@ Y una segunda, derivada:
 
 ### Nota sobre las amenidades
 
-Las amenidades (alberca, WiFi, aire acondicionado…) son un catálogo fijo de unos 30 términos. **No se traducen automáticamente**: se traducen a mano una sola vez al configurar el sistema y no vuelven a tocarse. No suponen trabajo para el administrador.
+Las amenidades (alberca, WiFi, aire acondicionado…) eran un catálogo fijo de unos 30 términos. **No se traducían automáticamente**: se traducían a mano una sola vez al configurar el sistema y no volvían a tocarse. No suponían trabajo para el administrador.
+
+> **Actualización — 5-sep-2026.** El cliente pidió poder dar de alta amenidades nuevas desde el panel sin escribirlas en los tres idiomas — el mismo motivo por el que el nombre de una casa no se escribe tres veces. Las amenidades nuevas ahora entran al **mismo pipeline de DeepL que las casas** (observador sobre el modelo, igual que `PropertyObserver`, encolando el mismo `TranslateModel`): el administrador escribe solo el español y la traducción llega detrás, sin revisión — el mismo riesgo de SEO de D2 aplica aquí igual, aunque el volumen es mucho menor (una amenidad nueva es una fila, no cincuenta). Las ~30 que ya existían se quedan con su traducción hecha a mano; no se retraducen solas.
+>
+> Categoría e ícono se quitaron de la pantalla de alta por ahora: la categoría porque ya no hacía falta pedirla ahí, el ícono porque todavía no existe un selector — queda pendiente para cuando se construya.
 
 ### Qué se bloquea mientras no se responda
 
