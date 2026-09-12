@@ -1,8 +1,21 @@
 # Servicio: Pagos — Stripe
 
+> ✅ **Única pasarela del sistema** (decisión del cliente, 25-ago-2026).
+> Mercado Pago queda descartado — ver [`06-pagos-mercadopago.md`](06-pagos-mercadopago.md).
+
 ## ¿Para qué se usa?
 
-Procesar el pago (total o anticipo) de una reserva con tarjeta, principalmente de huéspedes internacionales. Genera un `PaymentIntent` que se confirma vía webhook y actualiza el estado de la reserva.
+Procesar el pago de una reserva. Genera un `PaymentIntent` que se confirma vía webhook y actualiza el estado de la reserva.
+
+**Los tres métodos previstos van por aquí:**
+
+| Método | Monedas | Qué hace falta |
+|---|---|---|
+| **Tarjeta** | MXN, USD, CAD | Nada especial |
+| **OXXO** | Solo MXN | Cuenta de **Stripe México** + activar el método en el panel |
+| **SPEI** | Solo MXN | Misma cuenta + `customer_balance` con `mx_bank_transfer` |
+
+⚠️ **OXXO y SPEI son locales: solo existen en pesos.** Intentar cobrarlos en dólares no da un error evidente — Stripe simplemente no ofrece la opción y el huésped llega a un checkout sin el método que eligió. El sistema lo corta antes, al abrir el cobro.
 
 
 ## Justificación
@@ -11,7 +24,15 @@ Procesar el pago (total o anticipo) de una reserva con tarjeta, principalmente d
 - Ideal para tarjetas internacionales (turistas extranjeros reservando casas en México).
 - Checkout embebido (Stripe Elements) o alojado (Stripe Checkout) según el nivel de personalización deseado.
 
-**Complementar con Mercado Pago** (ver `06-pagos-mercadopago.md`) para métodos locales mexicanos (OXXO, SPEI, tarjetas de débito nacionales con mejores tasas de aprobación).
+**Por qué una sola pasarela:** un panel para conciliar, un modelo de webhooks que mantener y un juego de credenciales que rotar. La integración de pagos es la parte más delicada del sistema, y duplicarla duplica el riesgo, no solo el trabajo.
+
+⚠️ **Lo que cuesta esa decisión** (conviene tenerlo presente, no es un problema pero sí un dato):
+
+- **Comisión algo mayor en tarjeta nacional**: Stripe México cobra ~3.6% + $3 MXN frente al ~3.49% + $4 de Mercado Pago. Son decenas de pesos por reserva en tickets de varios miles.
+- **Tasa de aprobación**: Mercado Pago suele aprobar algo más en tarjetas mexicanas por su relación con los bancos locales. Si aparecen rechazos que no se explican, es lo primero que hay que medir antes de buscar otra causa.
+- **Meses sin intereses**: Stripe los ofrece en México, pero hay que **habilitarlos explícitamente**; no vienen activados de fábrica.
+
+**Cómo se revertiría:** el código habla con una interfaz `PaymentGateway`, no con Stripe. Añadir otra pasarela es una clase nueva y una línea en el contenedor de servicios; nada del flujo de reservas cambia.
 
 
 ## 💰 Precio y plan gratuito para desarrollo
@@ -84,6 +105,25 @@ match ($event->type) {
 };
 ```
 
-**Importante:** procesar el webhook de forma **idempotente** (verificar que el `payment_intent.id` no se haya procesado ya) para evitar duplicar confirmaciones si Stripe reintenta la entrega del evento.
+**Importante:** procesar el webhook de forma **idempotente**. Stripe reintenta la entrega durante días si tu servidor tarda o devuelve un 500, así que el mismo evento llega varias veces.
+
+La implementación usa una tabla `webhook_events` con `UNIQUE (provider, event_id)`. ⚠️ **La protección real es el índice al insertar, no un `exists()` previo**: dos entregas simultáneas del mismo evento pasarían la comprobación a la vez.
+
+### Eventos que se escuchan
+
+| Evento de Stripe | Significa |
+|---|---|
+| `payment_intent.succeeded` | Pagado → confirma la reserva |
+| `payment_intent.payment_failed` | Rechazado → **no** libera fechas: puede reintentar con otra tarjeta |
+| `checkout.session.async_payment_failed` | El voucher de OXXO/SPEI caducó sin pagarse |
+| `charge.refunded` | Reembolso confirmado |
+
+### ⚠️ Vencimiento de OXXO y SPEI
+
+El plazo del apartado **debe salir de la respuesta de Stripe** (`next_action.*.expires_after`), no de una constante nuestra. Si el voucher vive 3 días y el sistema expira la reserva a las 48 h, alguien puede pagar en la tienda una reserva que ya se liberó y quizá se revendió.
+
+### ⚠️ Reembolsar un pago en efectivo
+
+Un pago hecho con OXXO **no se devuelve en efectivo**: Stripe pide los datos bancarios del huésped para transferir. Ese flujo necesita una pantalla propia cuando se active el método — no es el mismo botón que el reembolso de tarjeta.
 
 Referenciado desde: `../arquitectura/`, secciones 1, 6, 7 y 10.

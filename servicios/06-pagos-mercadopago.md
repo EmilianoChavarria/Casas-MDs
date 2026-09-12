@@ -1,4 +1,30 @@
-# Servicio: Pagos — Mercado Pago
+# Servicio: Mercado Pago — ❌ DESCARTADO
+
+> **Decisión del cliente (25-ago-2026): no se contrata.** El sistema usa
+> **Stripe como única pasarela** ([`05-pagos-stripe.md`](05-pagos-stripe.md)),
+> que cubre tarjeta en cualquier moneda y, con cuenta de Stripe México,
+> también **OXXO y SPEI**.
+>
+> **Por qué una sola:** un panel para conciliar, un modelo de webhooks que
+> mantener, un juego de credenciales que rotar. La integración de pagos es
+> la parte más delicada del sistema y duplicarla duplica el riesgo, no solo
+> el trabajo.
+>
+> **Lo que se pierde, y conviene tenerlo presente:**
+>
+> - ⚠️ **Comisión algo mayor en tarjeta nacional**: Stripe México ~3.6% +
+>   $3 MXN frente a ~3.49% + $4 aquí. Decenas de pesos por reserva.
+> - ⚠️ **Tasa de aprobación**: Mercado Pago suele aprobar algo más en
+>   tarjetas mexicanas, por su relación con los bancos locales. Si aparecen
+>   rechazos inexplicables, es lo primero que hay que medir.
+>
+> **Este documento se conserva** por si el cliente quiere reconsiderarlo:
+> tiene las tarifas, la ruta de alta y la configuración. El código habla
+> con una interfaz `PaymentGateway`, así que añadir esta pasarela sería una
+> clase nueva y una línea en el contenedor de servicios — nada del flujo de
+> reservas cambiaría.
+
+---
 
 ## ¿Para qué se usa?
 
