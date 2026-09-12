@@ -269,6 +269,8 @@ customers ──1:N─> bookings
 
 **Por qué `customers.user_id` es nullable — y es la razón principal de este diseño:** el admin puede dar de alta una reserva de alguien que llamó por teléfono. Se crea el `customer` sin `user`. Si esa persona más adelante entra con Google usando el mismo correo, **se vincula a su ficha existente y ve su historial de reservas**. Con un modelo donde huésped y cuenta son lo mismo, esa reserva telefónica quedaría huérfana para siempre.
 
+⚠️ **Actualización (28-ago-2026): reservar desde el sitio exige sesión.** El cliente pidió cerrar el checkout a cuentas, así que `POST /bookings` pasó al grupo `auth:sanctum` (detalle en 06). Esto NO cambia el esquema: `customers.user_id` sigue siendo nullable por el motivo del párrafo anterior —el alta telefónica desde el panel—, y la vinculación por correo al registrarse sigue funcionando igual. Lo que se cerró es una puerta del sitio público, no el modelo.
+
 **Por qué `users.password` es nullable:** una cuenta creada con "Continuar con Google" nunca tuvo contraseña. Guardar un hash falso o una cadena vacía es peor — ver las reglas de la sección 7.3.
 
 **Por qué `social_accounts` es tabla y no una columna `users.google_id`:** permite vincular varios proveedores a la misma cuenta y añadir Apple o Facebook después sin migrar. `UNIQUE (provider, provider_user_id)` impide que dos cuentas locales reclamen la misma identidad de Google.
