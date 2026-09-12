@@ -106,6 +106,13 @@ PATCH                 /api/v1/admin/bookings/{id}/cancel
 GET|POST|PUT|DELETE  /api/v1/admin/customers[/{id}]
 GET|POST|PUT|DELETE  /api/v1/admin/users[/{id}]
 
+# Co-anfitriones: dueños externos (5.13)
+GET                   /api/v1/admin/cohosts                      # dueños, sus casas y porcentajes
+POST                  /api/v1/admin/cohosts                      # alta por invitación, role=cohost
+POST                  /api/v1/admin/cohosts/{id}/properties      # { property_id, commission_percent }
+DELETE                /api/v1/admin/cohosts/{id}/properties/{propertyId}
+DELETE                /api/v1/admin/cohosts/{id}                 # desactiva la cuenta
+
 # Chat (bandeja de administración)
 GET                   /api/v1/admin/conversations?status=open&assigned_to=
 PATCH                 /api/v1/admin/conversations/{id}/assign
@@ -153,6 +160,23 @@ GET    /api/v1/guide/reviews                        # sus reseñas
 ```
 
 ⚠️ Estos endpoints **filtran por `guide_id` en la consulta**, no solo con una policy. Un listado nunca pasa por `authorize()` fila a fila (20.4).
+
+### Panel del co-anfitrión (`role = cohost`)
+```
+GET    /api/v1/host/summary                         # sus casas, llegadas próximas, mes en curso
+GET    /api/v1/host/bookings?status=                # SOLO las de sus casas (scope, no policy)
+GET    /api/v1/host/calendar?from=&to=              # ocupación, SIN precios
+GET    /api/v1/host/report?from=&to=                # noches, generado, comisión, lo que le toca
+PUT    /api/v1/host/profile                         # sus propios datos; el correo NO se cambia aquí
+```
+
+⚠️ Mismo criterio que el panel del guía: **estos endpoints filtran por pertenencia en la consulta**, no con una policy. Las reservas se filtran por el `cohost_user_id` **congelado** en la reserva, no por el pivote: si una casa cambia de dueño, el nuevo no hereda las liquidaciones del anterior (5.13).
+
+⚠️ **Controladores propios, no los de `admin/`.** Los de administración no filtran por dueño —a un administrador le corresponde verlo todo— así que reutilizarlos aquí enseñaría el negocio de los demás. Se duplican a propósito, más pequeños.
+
+⚠️ **Privacidad del huésped:** `host/bookings` devuelve **solo el nombre de pila**. El correo y el teléfono no salen del servidor: con ellos, el dueño puede cerrar la siguiente reserva por fuera del sistema. Tampoco viaja la comisión del procesador de pagos, que absorbe el administrador.
+
+Los importes van en **moneda base**, aunque el huésped haya pagado en dólares: es lo que se le liquida al dueño.
 
 ### Experiencias — administración
 ```

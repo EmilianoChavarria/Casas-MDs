@@ -18,6 +18,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ⏳ Pendiente | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
+| D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 
 ---
 
@@ -687,6 +688,68 @@ Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos dife
 ### Qué se bloquea mientras no se responda
 
 El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.
+
+---
+
+## D14 — ¿Sobre qué importe se calcula la comisión del co-anfitrión?
+
+**Estado:** ⏳ Pendiente — se avanza con **solo alojamiento** · Relacionada con **D5** y **D7**
+
+### Contexto
+
+Un dueño externo publica su casa en el sistema y queda como **co-anfitrión**: el administrador mantiene el control de qué se publica y a qué precio, y el dueño ve sus reservas, su calendario y lo que le corresponde. De cada reserva, un porcentaje se queda el administrador como comisión.
+
+El porcentaje se pacta con cada dueño y ya se captura al asignarle la casa. Lo que nadie ha decidido es **sobre qué importe se aplica**, y no es un detalle de redacción: una reserva típica reparte su total en cuatro cosas distintas —alojamiento, huésped adicional, cargos de servicio e impuestos— y no todas son dinero del mismo dueño.
+
+⚠️ **Esto se pregunta ahora y no después por una razón concreta.** La comisión **se congela en cada reserva**, igual que el desglose de precios y la política de cancelación: si mañana se renegocia el porcentaje, las reservas ya cobradas siguen diciendo lo que decían. Eso es deliberado —lo contrario reescribiría liquidaciones ya pagadas— pero tiene una consecuencia: **las reservas creadas antes de esta respuesta se quedan para siempre con el supuesto que está aplicado hoy**. Cambiar la regla después no arregla el pasado, solo cambia el futuro.
+
+### La pregunta concreta
+
+> **1.** De una reserva, ¿sobre qué parte se cobra la comisión: solo el alojamiento, el alojamiento más los cargos de servicio, o el total incluyendo impuestos?
+>
+> **2.** Cuando una reserva se cancela y por la política de cancelación se retiene una parte del dinero, ¿el dueño cobra su parte de lo retenido, o se lo queda todo el administrador?
+
+### Opciones para la pregunta 1
+
+Sobre una reserva de ejemplo: alojamiento **$10,000**, huésped adicional **$1,000**, cargo de limpieza **$800**, impuestos **$1,900** (IVA e ISH sobre el subtotal, según D5). Total al huésped: **$13,700**. Comisión pactada: **15%**.
+
+| Opción | Base | Comisión | Le queda al dueño |
+|---|---|---|---|
+| **A. Solo alojamiento** *(la aplicada hoy)* | $11,000 | $1,650 | $9,350 |
+| **B. Alojamiento + cargos** | $11,800 | $1,770 | $9,230 |
+| **C. Total, impuestos incluidos** | $13,700 | $2,055 | $8,945 |
+
+**A — solo alojamiento.** Es lo que está aplicado y lo más habitual en el sector. El dueño paga comisión sobre lo que le renta su casa, que es lo que el administrador le está vendiendo.
+
+**B — alojamiento más cargos.** Defendible si el cargo de limpieza es un servicio que el dueño presta y cobra. ⚠️ **Si la limpieza la opera el administrador —que es lo normal aquí— esta opción le cobra comisión al dueño sobre un dinero que el administrador ya se está quedando entero.** Cobraría dos veces por lo mismo.
+
+**C — total con impuestos.** ⚠️ **No se recomienda.** El IVA y el ISH son dinero en tránsito al SAT: no se lo queda el dueño ni el administrador. Cobrar comisión sobre ellos significa que el dueño paga por recaudar un impuesto que entrega íntegro. Además ata la comisión a la tasa fiscal: si el ISH sube, la comisión sube sola sin que nadie lo haya pactado.
+
+**Lo que no cambia entre las tres opciones:** la base va **neta de descuentos**. Si una promoción rebaja la reserva un 20%, la comisión se calcula sobre lo que realmente entró, no sobre el precio de tarifa. Lo contrario haría que la promoción la pagara entera el administrador de su bolsillo, sin que nadie lo decidiera.
+
+**Lo que ya está decidido y no se pregunta:** la **comisión del procesador de pagos la absorbe el administrador**. El dueño ve una cuenta limpia, sin descuentos de Stripe que no entiende ni puede verificar.
+
+### Opciones para la pregunta 2 — la cancelación
+
+Hoy **no hay nada implementado**: si una reserva se cancela, sus importes de comisión se quedan como estaban al reservar y nadie los ajusta. Es un pendiente conocido, no una decisión.
+
+Sobre el ejemplo anterior cancelado con un 50% de retención según la política (D7) — se retienen **$6,850**:
+
+| Opción | Qué pasa | Comisión | Le queda al dueño |
+|---|---|---|---|
+| **A. Proporcional** *(recomendada)* | La comisión se recalcula sobre lo retenido | $825 | $4,675 |
+| **B. Se anula** | Nadie cobra comisión de una reserva cancelada | $0 | $5,500 |
+| **C. Se conserva entera** | El administrador cobra la comisión original | $1,650 | $3,850 |
+
+**A** reparte la pérdida igual que se reparte la ganancia, y es la que no genera discusión. **C** puede llegar a dejar al dueño en negativo si la retención es pequeña, y ese es el escenario en el que un socio se va.
+
+### Qué se bloquea mientras no se responda
+
+**Nada del desarrollo:** el módulo funciona y la base es configurable, se cambia sin tocar código.
+
+Lo que bloquea es la **primera liquidación real a un co-anfitrión**. Por el congelado que se explica arriba, conviene responder **antes de dar de alta al primer dueño**: después, esas reservas ya no se pueden recalcular sin reescribir su histórico.
+
+La pregunta 2 bloquea, además, lo que diga el **contrato con el co-anfitrión** sobre cancelaciones, que debería decir lo mismo que hace el sistema.
 
 ---
 
