@@ -8,7 +8,8 @@
 users            (id, name, email UNIQUE, email_verified_at,
                    password NULL,          -- NULL en cuentas creadas por OAuth
                    role_id FK, locale, is_active, ...)
-roles            (id, name, slug)          -- admin, staff, guest
+roles            (id, name, slug)          -- admin, staff, guide, guest, cohost
+                  -- cohost = dueño externo, solo lectura de sus casas (5.13)
 
 social_accounts  (id, user_id FK, provider ENUM(google), provider_user_id,
                    email, avatar_url, created_at)
@@ -43,6 +44,14 @@ property_images  (id, property_id FK, url, is_cover, order, alt_text)
 
 amenities        (id, name, icon, category)
 property_amenity (property_id FK, amenity_id FK)   -- pivot
+
+-- ── Co-anfitriones: dueños externos (detalle en 5.13) ──
+property_cohost  (property_id FK, user_id FK, commission_percent DECIMAL(5,2),
+                   created_at, updated_at)
+                  -- PRIMARY KEY (property_id, user_id)
+                  -- El porcentaje es del PAR, no de la persona: el mismo
+                  -- dueño puede tener dos casas con tratos distintos, y
+                  -- una casa puede tener dos dueños (un matrimonio).
 
 -- ── Precios: temporadas y reglas (detalle completo en sección 15) ──
 seasons          (id, name, start_date, end_date, recurrence ENUM(none,yearly),
@@ -104,6 +113,13 @@ bookings         (id, property_id FK, customer_id FK, checkin, checkout,
                    fx_rate DECIMAL(12,6) NULL,      -- congelada al confirmar (D1)
                    base_currency_total DECIMAL NULL, -- normalizado a MXN
                    cancellation_policy_snapshot JSON, -- la vigente al reservar (D7)
+                   cohost_user_id FK NULL,          -- de quién era la casa AL RESERVAR
+                   cohost_commission_percent DECIMAL(5,2) NULL,
+                   cohost_commission_base DECIMAL NULL,
+                   cohost_commission_amount DECIMAL NULL,
+                   cohost_payout_amount DECIMAL NULL,
+                  -- los cuatro CONGELADOS y en MONEDA BASE, no en la de
+                  -- la reserva: al dueño se le liquida en pesos (5.13)
                    invoice_requested BOOLEAN DEFAULT 0, invoice_notes TEXT NULL,
                    terms_version_accepted VARCHAR, terms_accepted_at DATETIME, ...)
                   -- facturación: ver 5.7 · términos aceptados: ver 5.9
@@ -160,6 +176,8 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 - `customers 1—N conversations 1—N messages`
 - `experiences 1—N experience_departures 1—N experience_bookings` (**el inventario es la salida, no el día** — sección 20.1)
 - `guides 0..1—1 users` (mismo patrón nullable que `customers.user_id`, y por el mismo motivo: sección 20.4)
+- `properties N—N users` (pivote `property_cohost`, **con atributo**: `commission_percent` — mismo patrón que `fee_property`; ver 5.13)
+- `bookings N—0..1 users` por `cohost_user_id` (**congelado**: de quién era la casa al reservar, no de quién es hoy)
 - `payments N—1 payable` (polimórfico: `bookings` o `experience_bookings`, sección 20.7)
 - `conversations N—1 properties` y `N—1 bookings` (ambas opcionales: una conversación puede no estar anclada a nada)
 
@@ -179,6 +197,7 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 - `messages(conversation_id, id DESC)` — historial con paginación keyset (no `OFFSET`).
 - `messages(conversation_id, read_at)` — contar no leídos sin escanear el hilo completo.
 - `messages(client_uuid)` UNIQUE — idempotencia ante reenvíos del cliente.
+- `bookings(cohost_user_id, status)` — el panel del dueño lista sus reservas por estado, y es su consulta más frecuente.
 
 **Estrategia anti doble-booking:** al crear una reserva, usar transacción + `SELECT ... FOR UPDATE` sobre las filas de `availability` del rango de fechas, o directamente intentar `INSERT` de esas fechas como `booked` y capturar el error de UNIQUE constraint si alguna ya existe. Esto es más robusto que solo validar con un `WHERE` antes del insert (condición de carrera).
 
@@ -408,4 +427,34 @@ Es el mismo patrón de herencia que ya usan las temporadas y las promociones en 
 ⚠️ **Traslape de temporadas:** MySQL 8 no tiene *exclusion constraints* sobre rangos de fechas (PostgreSQL sí, con `EXCLUDE USING gist`). Por eso el traslape de `seasons` se valida en la capa de aplicación (FormRequest) y la ambigüedad restante se resuelve con la regla determinista de prioridad de la sección 15.3 — nunca se deja al azar del orden de consulta.
 
 ---
+
+### 5.13 Co-anfitriones: dueños externos
+
+Un dueño externo publica su casa en el sistema y queda como **co-anfitrión**: ve sus reservas, su ocupación y lo que le corresponde, pero **no da de alta ni modifica nada** — el administrador mantiene el control de qué se publica y a qué precio (1.1). De cada reserva, un porcentaje pactado se lo queda el administrador como comisión.
+
+#### Por qué un pivote y no `properties.cohost_user_id`
+
+Porque **el porcentaje es del par casa-dueño**, no de la persona ni de la casa. El mismo dueño puede tener dos casas negociadas a porcentajes distintos, y una casa puede tener dos dueños (un matrimonio, unos hermanos). Una columna en `properties` obligaría a inventar una tabla aparte para el porcentaje en cuanto aparezca el primer caso. Es el mismo patrón de `fee_property`, el otro pivote del proyecto con un atributo por par.
+
+#### ⚠️ Por qué la comisión se congela en la reserva
+
+Las cinco columnas `cohost_*` de `bookings` se escriben al crear la reserva y **no se vuelven a tocar**. No se calculan al leer el reporte.
+
+El motivo es el mismo que el de `cancellation_policy_snapshot` y `booking_nights`: **renegociar no puede reescribir el pasado**. Si el trato pasa del 15% al 18%, las reservas ya liquidadas tienen que seguir diciendo 15%. Calculando al leer, un cambio de porcentaje reescribiría en silencio el histórico de liquidaciones, y el fallo se descubriría cuando el co-anfitrión reclame una cifra que ya no coincide con lo que cobró.
+
+Por la misma razón se guardan **los importes resueltos y no solo el porcentaje**: la base sobre la que se aplica es configurable (`cohost.commission_base`, ver **D14**), así que con solo el porcentaje, cambiar esa regla recalcularía todo el pasado.
+
+⚠️ **Los cuatro importes van en MONEDA BASE**, no en la de la reserva. Al dueño se le liquida en pesos; guardarlos en la moneda del huésped obligaría a sumar dólares con pesos al totalizar el reporte — exactamente el fallo que ya se corrigió en la conciliación de pagos.
+
+⚠️ `cohost_user_id` es **nullable**: la mayoría de las casas son del negocio y no tienen dueño externo. Sin co-anfitrión, las cinco columnas quedan en `NULL` y el alta de la reserva no cambia en nada.
+
+#### El aislamiento es un filtro, no una policy
+
+Un co-anfitrión no debe ver el negocio de otro. Esa separación **vive en las consultas**: todo endpoint de `/host/*` arranca resolviendo las casas del usuario por el pivote y filtra por ahí (ver 6 y 7). Es el mismo criterio que el panel del guía (20.4) y por el mismo motivo: **una policy no protege un listado**, porque un listado nunca pasa por `authorize()` fila a fila.
+
+Las reservas del dueño se filtran además por `cohost_user_id` —el valor congelado— y no por el pivote: si una casa cambia de dueño, el nuevo no hereda las liquidaciones del anterior.
+
+#### Qué no sale del servidor
+
+**El correo y el teléfono del huésped no se exponen al co-anfitrión**, solo su nombre de pila. Con los datos de contacto, el dueño puede cerrar la siguiente reserva por fuera del sistema y saltarse al administrador. Es la misma línea de privacidad que ya siguen las reseñas públicas (5.4). Tampoco ve la comisión del procesador de pagos —la absorbe el administrador— ni nada de las casas que no son suyas.
 
