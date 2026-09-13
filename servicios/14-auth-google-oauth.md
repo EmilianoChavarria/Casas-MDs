@@ -43,20 +43,50 @@ Con solo `openid`, `email` y `profile` (scopes **no sensibles**):
 
 ## Ruta de creación
 
-1. Ir a Google Cloud Console → **APIs y servicios → Pantalla de consentimiento de OAuth**.
-2. Tipo de usuario: **External**.
-3. Llenar nombre de la app, correo de soporte, logo y enlaces a política de privacidad y términos (obligatorios para publicar).
-4. **Scopes:** añadir únicamente `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`. **No añadir ninguno más** — cualquier scope sensible dispara el proceso de revisión completo.
-5. **Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web.**
-6. **URI de redirección autorizados** — exactos, sin barra final de más:
+> ⚠️ **Google renombró esta sección.** Lo que la mayoría de guías llama
+> "Pantalla de consentimiento de OAuth" ahora se llama **Google Auth
+> Platform**, y varias opciones cambiaron de sitio. Equivalencias:
+>
+> | Nombre antiguo | Dónde está ahora |
+> |---|---|
+> | Pantalla de consentimiento de OAuth | **Google Auth Platform** |
+> | Tipo de usuario: External | Dentro del asistente → paso **Público** |
+> | Scopes / Permisos | **Acceso a los datos** |
+> | Credenciales → ID de cliente de OAuth | **Clientes** → Crear cliente |
+> | Publicar aplicación | **Público** → botón *Publicar app* |
+> | Verificación de marca | **Información de la marca** |
+
+1. Crear el proyecto en https://console.cloud.google.com (no hace falta
+   tarjeta: OAuth no factura).
+2. Menú → **Google Auth Platform** → **Comenzar**. El asistente pide, en
+   este orden:
+   1. **Información de la app** — nombre (lo verá el huésped) y correo de asistencia.
+   2. **Público** → elegir **Externo**. *"Interno" solo aparece con Google
+      Workspace y limitaría el acceso a la organización.*
+   3. **Información de contacto** — correo para avisos de Google.
+   4. Aceptar y crear.
+3. **Acceso a los datos** → Agregar permisos → únicamente:
+   ```
+   openid
+   .../auth/userinfo.email
+   .../auth/userinfo.profile
+   ```
+   ⚠️ **Ninguno más.** Cualquier scope sensible dispara el proceso de
+   revisión completo de Google, que tarda semanas.
+4. **Clientes** → **Crear cliente** → tipo **Aplicación web**.
+5. **URI de redirección autorizados** — exactos, sin barra final de más:
    ```
    http://localhost:8000/api/v1/auth/google/callback
    https://api.midominio.com/api/v1/auth/google/callback
    https://api-staging.midominio.com/api/v1/auth/google/callback
    ```
-7. Copiar **Client ID** y **Client Secret**.
-8. ⚠️ **Publicar la app**: pantalla de consentimiento → botón **"Publicar aplicación"** → estado *In production*. Sin esto queda el tope de 100 usuarios.
-9. (Opcional, antes de lanzar) Solicitar la verificación de marca para que aparezcan nombre y logo.
+6. Copiar **Client ID** y **Client Secret**.
+7. ⚠️ **Publicar la app**: **Público** → botón **Publicar app** → estado
+   *In production*. Sin esto queda el tope de 100 usuarios, y el error
+   aparece el día del lanzamiento.
+8. **Información de la marca** (opcional, antes de lanzar) — para que
+   aparezcan el nombre y el logo del negocio en la pantalla de
+   consentimiento en vez del dominio en crudo.
 
 ## Contrato / plan recomendado
 

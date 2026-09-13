@@ -48,6 +48,27 @@ Cloudflare R2 tiene un **free tier permanente** (no es una prueba por tiempo lim
 
 ## Configuración
 
+> ✅ **Implementado.** Lo que sigue es lo que hay en el código, no una
+> propuesta. Rama `feat/almacenamiento-r2` del backend.
+
+### Qué se guarda en la base de datos: la ruta, no la URL
+
+`property_images.path` guarda `properties/12/01j8x….webp` y
+`zones.image_path` guarda `zones/01j8x….webp`. La URL pública se arma al
+leer, en `App\Services\Media\ImageStorage`.
+
+⚠️ Esto **cambia respecto al borrador anterior de este documento**, que
+guardaba `Storage::url($path)` en la columna. Guardar la URL completa es
+cómodo un día y caro el resto: conectar un dominio propio al bucket,
+cambiar de proveedor o pasar de pruebas a producción invalidaría todas
+las filas a la vez, y arreglarlo sería un reemplazo de cadenas sobre
+datos reales. Con la ruta guardada, ese cambio es una variable de
+entorno.
+
+`ImageStorage::url()` acepta también URLs absolutas y las devuelve tal
+cual, porque algunas fotos de zona son de banco de imágenes y nunca
+pasaron por el bucket. Se reconocen por el `http` de delante, sin
+necesidad de una columna que marque el origen.
 
 ### Variables de entorno (`.env` de Laravel)
 ```
@@ -55,41 +76,95 @@ FILESYSTEM_DISK=r2
 
 R2_ACCESS_KEY_ID=<access key>
 R2_SECRET_ACCESS_KEY=<secret key>
-R2_BUCKET=rentas-casas-media
+R2_BUCKET=casa-caribe
 R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
-R2_URL=https://cdn.midominio.com   # dominio público conectado al bucket
+R2_URL=https://fotos.midominio.com   # dominio publico conectado al bucket
 ```
+
+`R2_ENDPOINT` es el de la **API** (lleva credenciales). `R2_URL` es el
+dominio desde el que el navegador **descarga** las fotos. No son el
+mismo, y confundirlos deja todas las fotos rotas con un error que no
+explica por qué.
+
+En desarrollo no hace falta nada de esto: con `FILESYSTEM_DISK=public`
+las fotos van a `storage/app/public` y las sirve el propio Laravel. Una
+sola vez:
+
+```
+php artisan storage:link
+```
+
+### El frontend tiene que reconocer el dominio
+
+`next.config.ts` deriva los dominios de imagen permitidos de
+`NEXT_PUBLIC_API_URL`. Con las fotos en otro dominio hay que añadirlo:
+
+```
+NEXT_PUBLIC_IMAGE_HOST=fotos.midominio.com
+```
+
+Sin esto Next rechaza las imágenes con un error de host no configurado.
 
 ### `config/filesystems.php`
-```php
-'disks' => [
-    'r2' => [
-        'driver' => 's3',
-        'key' => env('R2_ACCESS_KEY_ID'),
-        'secret' => env('R2_SECRET_ACCESS_KEY'),
-        'region' => 'auto',
-        'bucket' => env('R2_BUCKET'),
-        'endpoint' => env('R2_ENDPOINT'),
-        'url' => env('R2_URL'),
-        'use_path_style_endpoint' => false,
-    ],
-],
-```
 
-### Flujo de subida (Service, resumen)
-```php
-public function storePropertyImage(Property $property, UploadedFile $file): PropertyImage
-{
-    // Validar y re-procesar antes de subir (ver 07-seguridad en doc principal)
-    $optimized = Image::make($file)->encode('webp', 80);
+Tres particularidades de R2 que hay que respetar o las subidas fallan de
+formas poco claras:
 
-    $path = "properties/{$property->id}/" . Str::uuid() . '.webp';
-    Storage::disk('r2')->put($path, $optimized);
+1. **R2 no admite ACLs.** Por eso el disco **no** declara `'visibility'`:
+   en cuanto se declara, Flysystem manda una cabecera de ACL en cada
+   subida y R2 responde con un error que no menciona la palabra ACL por
+   ningún lado.
+2. **La región siempre es `auto`.** R2 no tiene regiones al estilo de S3.
+3. **El endpoint es por cuenta, no por bucket** —
+   `https://<cuenta>.r2.cloudflarestorage.com/<bucket>`—, así que se usa
+   estilo de ruta. Queda en `R2_USE_PATH_STYLE` por si una cuenta
+   concreta responde al estilo de subdominio.
 
-    return $property->images()->create([
-        'url' => Storage::disk('r2')->url($path),
-    ]);
-}
-```
+Además `'throw' => true`: si una subida falla hay que enterarse en el
+momento. En `false`, Laravel devuelve `false` y la casa se queda con una
+foto que no existe.
+
+### Normalización al subir
+
+Toda foto se reencodea a **WebP**, con el lado mayor limitado a 2560 px,
+antes de guardarse. No es cosmética:
+
+- **Descarta los metadatos**, y con ellos las coordenadas GPS que los
+  teléfonos incrustan en cada foto. Publicar el EXIF de la foto de una
+  recámara es publicar la ubicación exacta de la casa con precisión de
+  metros — incluidas las casas que todavía son borrador.
+- **Aplica la orientación** que venía en esos metadatos antes de
+  tirarlos. Sin esto las fotos tomadas en vertical se guardan tumbadas:
+  el navegador ya no tiene el EXIF para corregirlas.
+- **Unifica formato y tamaño.** Entran JPEG, PNG y WebP de cámaras
+  distintas; sale siempre lo mismo.
+
+### Ciclo de vida
+
+Borrar una foto borra el objeto, y reemplazar la foto de una zona borra
+la anterior. Sin eso los archivos se acumulan para siempre: nadie los ve,
+nadie sabe que están, y se pagan todos los meses.
+
+### Lo que deliberadamente NO se hizo
+
+**No se generan miniaturas.** El sitio público usa `next/image`, que ya
+redimensiona y sirve en formatos modernos. Generar tres tamaños por foto
+en la subida sería multiplicar por cuatro el almacenamiento y añadir una
+cola de trabajos para hacer lo que ya se hace.
+
+**La subida pasa por Laravel**, no del navegador al bucket con una URL
+firmada. Cuesta un salto de red más y a cambio la validación del
+contenido —que un `.php` renombrado a `.jpg` no entre— ocurre del lado
+del servidor. Con una URL firmada, el navegador puede subir dentro de
+ella lo que quiera. A este volumen —fotos de casas, subidas por el
+personal— el salto extra no se nota.
+
+**No hay CORS en el bucket.** No hace falta: quien sube es Laravel y
+quien descarga es una etiqueta `<img>`. Haría falta el día que se pase a
+subidas directas desde el navegador.
+
+⚠️ **R2 exige tarjeta registrada para activarse**, incluso para usar solo
+el tramo gratuito, y Cloudflare hace preautorizaciones temporales para
+comprobarla. No se cobra nada mientras el consumo esté dentro del tramo.
 
 Referenciado desde: `../arquitectura/`, secciones 1, 3 y 8.

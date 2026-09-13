@@ -433,7 +433,7 @@ El prototipo **ya lo construyó**, así que el costo de la UI está pagado. Pero
 - **Traducir la interfaz** (labels, botones, textos fijos): ya hecho, se conserva.
 - **Traducir el contenido de las propiedades** (nombre, descripción): **no está hecho** y sí es caro — implica columnas o tabla de traducciones en `properties`, panel de edición por idioma, y `hreflang` en las rutas para no perder SEO.
 
-Si el mercado incluye turistas internacionales (que es el argumento para tener Stripe además de Mercado Pago), lo primero se queda. Lo segundo debería decidirse ahora, porque afecta el esquema de la sección 5 y las rutas SEO de la sección 4.
+Si el mercado incluye turistas internacionales (que es el argumento para cobrar en varias monedas), lo primero se queda. Lo segundo debería decidirse ahora, porque afecta el esquema de la sección 5 y las rutas SEO de la sección 4.
 
 ---
 
