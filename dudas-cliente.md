@@ -18,6 +18,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ⏳ Pendiente | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
+| D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 
 ---
@@ -130,7 +131,7 @@ En la conversación se mencionó un 3%. **Ese número era un ejemplo de colchón
 
 ### Dato adicional que el cliente debe conocer
 
-**Si el huésped paga en dólares, el pago se procesa obligatoriamente por Stripe.** Mercado Pago opera esencialmente en pesos mexicanos. Es decir: la moneda que elija el huésped determina qué procesador cobra, y por tanto qué comisión se paga. Los pagos en pesos pueden seguir yendo por Mercado Pago, que suele ser más conveniente en México.
+**Todos los cobros van por Stripe**, que opera en las tres monedas. ⚠️ Cobrar en moneda extranjera tiene una comisión de conversión adicional sobre la de la transacción: un pago en dólares deja algo menos que el mismo importe en pesos. Es un argumento a favor de la opción C de esta duda, que absorbe ese cargo en el tipo de cambio.
 
 ### Otras dos cosas que hay que definir con el cliente
 
@@ -483,7 +484,7 @@ Es deliberado y no es negociable desde lo técnico: cambiar la política retroac
 
 ### Qué se bloquea mientras no se responda
 
-El flujo de cancelación completo: pantalla del huésped, ejecución del reembolso contra Stripe o Mercado Pago, y liberación de fechas. **También obliga a una tabla nueva de reembolsos** — la de pagos actual no puede registrar devoluciones parciales, porque un reembolso no es "el pago cambió de estado", es un movimiento aparte con su propia referencia en el procesador.
+El flujo de cancelación completo: pantalla del huésped, ejecución del reembolso contra Stripe, y liberación de fechas. **También obliga a una tabla nueva de reembolsos** — la de pagos actual no puede registrar devoluciones parciales, porque un reembolso no es "el pago cambió de estado", es un movimiento aparte con su propia referencia en el procesador.
 
 El desarrollo puede avanzar con el valor por omisión de arriba, pero **no debe salir a producción sin la política confirmada por escrito**: es lo que el huésped acepta al reservar.
 
@@ -500,7 +501,7 @@ No es un trámite opcional. **Tres cosas que ya están decididas no se pueden ac
 | Bloqueo | Consecuencia si falta |
 |---|---|
 | **Publicar la app de Google** (para "Continuar con Google") | Google exige una política de privacidad accesible. Sin publicarla, la app queda con un **tope de 100 usuarios** |
-| **Activar Stripe y Mercado Pago en producción** | Ambos exigen términos y condiciones y política de reembolso visibles antes de permitir cobros reales |
+| **Activar Stripe en producción** | Exige términos y condiciones y política de reembolso visibles antes de permitir cobros reales |
 | **Cumplimiento de la LFPDPPP** | El aviso de privacidad es obligatorio para tratar datos personales de huéspedes |
 
 El desarrollo construye las páginas, las traduce a los tres idiomas y registra qué versión aceptó cada huésped. **El contenido tiene que aportarlo el cliente o su abogado** — es responsabilidad legal de quien opera el negocio.
@@ -519,7 +520,7 @@ Esta lista sale de las decisiones ya tomadas. Entregársela al abogado le ahorra
 - **Inicio de sesión con Google:** se recibe nombre, correo verificado, foto e idioma. Implica que Google sabe que la persona usa este sitio.
 - **Chat con la administración:** los mensajes se conservan **12 meses** si no hubo reserva, y **5 años** si la conversación está vinculada a una reserva.
 - **Traducción automática:** las descripciones de las propiedades se procesan con DeepL, un servicio externo. (Las reseñas y los mensajes de chat **no** se envían a traducir.)
-- **Procesadores de pago:** Stripe y Mercado Pago reciben los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
+- **Procesador de pago:** Stripe recibe los datos necesarios para cobrar. El sistema **no almacena números de tarjeta**.
 - **Imágenes y archivos** almacenados en Cloudflare R2.
 - **Correos automáticos** que se envían y cómo darse de baja de la solicitud de reseña.
 - ⚠️ **Datos de salud de los tours** (sección 20.9): restricciones alimentarias, alergias, "no sabe nadar", movilidad. Son **datos personales sensibles** bajo la LFPDPPP y requieren consentimiento expreso. Hay que decir para qué se usan (seguridad del tour), quién los ve (el guía asignado) y cuánto se conservan.
@@ -688,6 +689,65 @@ Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos dife
 ### Qué se bloquea mientras no se responda
 
 El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.
+
+---
+
+## D13 — ¿Se aplica un margen sobre el tipo de cambio?
+
+**Estado:** ⏳ Pendiente · Amplía **D1**
+
+### Contexto
+
+El sitio ya enseña los precios en pesos, dólares y dólares canadienses. La conversión usa el tipo de cambio de referencia del **Banco Central Europeo**, que se trae todos los días de forma automática.
+
+Ese tipo de cambio es el **medio de mercado**: el punto intermedio entre lo que se compra y lo que se vende. **Nadie opera a ese precio.** Cuando el dinero llega de verdad, Stripe convierte a su propia tasa, que lleva su diferencial —del orden del **1 % al 2 %**.
+
+El resultado, con una casa de 3.396 MXN por noche:
+
+| Paso | Importe |
+|---|---|
+| El huésped ve y paga | 200.94 USD |
+| Stripe convierte a pesos a su tasa | |
+| Te deposita | **≈ 3.330 MXN** |
+
+**Faltan unos 66 pesos.** No es un error de nadie: es lo que cuesta convertir divisa. La única pregunta es **quién lo paga**.
+
+Sin margen, lo paga el negocio, en cada reserva que se cobre en dólares o en dólares canadienses.
+
+### Qué es el margen
+
+Un colchón que se aplica al convertir, y **solo al convertir**. Con un 3 %:
+
+| | Tasa | 3.396 MXN |
+|---|---|---|
+| Sin margen | 0.05917 | 200.94 USD |
+| Con 3 % | 0.05740 | **194.98 USD** |
+
+El huésped ve 194.98 en vez de 200.94: paga menos dólares por la misma casa, y al convertirse a pesos llegan los 3.396 que se querían cobrar.
+
+⚠️ **El margen NO toca el precio en pesos.** El precio en la moneda base es el que se escribe en el panel; el margen solo afecta a la conversión hacia otras monedas. Aplicarlo a los pesos subiría el precio a todo el mundo sin querer.
+
+### La pregunta concreta
+
+> ¿Se aplica un margen al convertir a dólares y dólares canadienses, y de cuánto?
+>
+> - **0 %** — el precio en dólares es el más atractivo posible, y el diferencial de cambio lo absorbe el negocio en cada reserva. Tiene sentido si vender en dólares trae huéspedes que de otro modo no reservarían.
+> - **2–3 %** — cubre el diferencial de Stripe y el negocio sale a cero. Es lo más habitual en el sector.
+> - **4–5 %** — cubre y deja algo de margen. Empieza a notarse frente a un competidor que no lo aplique.
+
+### Lo que hay que saber antes de responder
+
+**El precio en dólares dejará de coincidir con el que da Google.** Hoy la diferencia es de un 0.08 % —dieciséis centavos en una reserva de doscientos dólares— porque el Banco Central Europeo publica una vez al día y Google enseña una tasa casi en vivo. Nadie lo nota.
+
+Con un 3 % de margen sí se nota, y un huésped que compare puede preguntar. Es una práctica normal y extendida, pero conviene decidirlo a sabiendas y no descubrirlo por una queja.
+
+**No cambia lo que ya se cobró.** Cada reserva guarda congelada la tasa con la que se cotizó (`bookings.fx_rate`), así que ajustar el margen no altera ninguna reserva existente.
+
+### Qué se bloquea mientras no se responda
+
+Nada del desarrollo: el sitio funciona hoy con margen **0 %**, que es el valor por omisión. Lo que se bloquea es saber si el negocio está perdiendo un 1–2 % en cada reserva cobrada en divisa extranjera.
+
+Es configuración, no código: al responder se ajusta un valor y aplica desde la siguiente cotización.
 
 ---
 

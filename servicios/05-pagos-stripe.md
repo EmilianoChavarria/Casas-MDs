@@ -1,17 +1,44 @@
 # Servicio: Pagos — Stripe
 
+> ✅ **Única pasarela del sistema** (decisión del cliente, 25-ago-2026).
+> Mercado Pago queda descartado — ver [`06-pagos-mercadopago.md`](06-pagos-mercadopago.md).
+
 ## ¿Para qué se usa?
 
-Procesar el pago (total o anticipo) de una reserva con tarjeta, principalmente de huéspedes internacionales. Genera un `PaymentIntent` que se confirma vía webhook y actualiza el estado de la reserva.
+Procesar el pago de una reserva. Genera un `PaymentIntent` que se confirma vía webhook y actualiza el estado de la reserva.
+
+**Los tres métodos previstos van por aquí:**
+
+| Método | Monedas | Qué hace falta |
+|---|---|---|
+| **Tarjeta** | MXN, USD, CAD | Nada especial |
+| **OXXO** | Solo MXN | Cuenta de **Stripe México** + activar el método en el panel |
+| **SPEI** | Solo MXN | Misma cuenta + `customer_balance` con `mx_bank_transfer` |
+
+⚠️ **OXXO y SPEI son locales: solo existen en pesos.** Intentar cobrarlos en dólares no da un error evidente — Stripe simplemente no ofrece la opción y el huésped llega a un checkout sin el método que eligió. El sistema lo corta antes, al abrir el cobro.
 
 
 ## Justificación
 
 - Mejor documentación y SDK del mercado, ampliamente soportado por Laravel (`laravel/cashier` opcional, o SDK directo `stripe/stripe-php`).
 - Ideal para tarjetas internacionales (turistas extranjeros reservando casas en México).
-- Checkout embebido (Stripe Elements) o alojado (Stripe Checkout) según el nivel de personalización deseado.
+- Checkout **alojado** (Stripe Checkout). ✅ **Decidido (28-ago-2026).**
 
-**Complementar con Mercado Pago** (ver `06-pagos-mercadopago.md`) para métodos locales mexicanos (OXXO, SPEI, tarjetas de débito nacionales con mejores tasas de aprobación).
+**Por qué alojado y no Elements:** el número de tarjeta nunca toca este dominio, así que el alcance de PCI se queda en SAQ-A, el más bajo. Y resuelve los tres métodos que el sistema ofrece —tarjeta, OXXO y SPEI— en una sola integración: con Elements, la ficha de OXXO y la CLABE de SPEI necesitan pantalla propia, porque no caben en un formulario de tarjeta. Se paga con menos control del aspecto: la página de pago es de Stripe, personalizable con logo y colores pero no con el diseño del sitio.
+
+⚠️ **Implica una Checkout Session, no un PaymentIntent suelto.** Un PaymentIntent solo devuelve un `client_secret` para montar el formulario uno mismo; no tiene página propia a la que mandar al huésped. Durante un tiempo el backend creó PaymentIntents mientras el frontend esperaba una `checkout_url` que nunca llegaba, y el botón de pagar no hacía nada.
+
+⚠️ **`payments.provider_ref` es la Checkout Session (`cs_…`), no el PaymentIntent.** Es lo que existe al abrir el cobro y lo que viaja en los webhooks `checkout.session.*`. Pero **un reembolso va contra el PaymentIntent**, que solo se conoce cuando el webhook confirma el pago: por eso se guarda aparte en `provider_payment_ref`. Reembolsar contra la sesión falla.
+
+**Por qué una sola pasarela:** un panel para conciliar, un modelo de webhooks que mantener y un juego de credenciales que rotar. La integración de pagos es la parte más delicada del sistema, y duplicarla duplica el riesgo, no solo el trabajo.
+
+⚠️ **Lo que cuesta esa decisión** (conviene tenerlo presente, no es un problema pero sí un dato):
+
+- **Comisión algo mayor en tarjeta nacional**: Stripe México cobra ~3.6% + $3 MXN frente al ~3.49% + $4 de Mercado Pago. Son decenas de pesos por reserva en tickets de varios miles.
+- **Tasa de aprobación**: Mercado Pago suele aprobar algo más en tarjetas mexicanas por su relación con los bancos locales. Si aparecen rechazos que no se explican, es lo primero que hay que medir antes de buscar otra causa.
+- **Meses sin intereses**: Stripe los ofrece en México, pero hay que **habilitarlos explícitamente**; no vienen activados de fábrica.
+
+**Cómo se revertiría:** el código habla con una interfaz `PaymentGateway`, no con Stripe. Añadir otra pasarela es una clase nueva y una línea en el contenedor de servicios; nada del flujo de reservas cambia.
 
 
 ## 💰 Precio y plan gratuito para desarrollo
@@ -84,6 +111,33 @@ match ($event->type) {
 };
 ```
 
-**Importante:** procesar el webhook de forma **idempotente** (verificar que el `payment_intent.id` no se haya procesado ya) para evitar duplicar confirmaciones si Stripe reintenta la entrega del evento.
+**Importante:** procesar el webhook de forma **idempotente**. Stripe reintenta la entrega durante días si tu servidor tarda o devuelve un 500, así que el mismo evento llega varias veces.
+
+La implementación usa una tabla `webhook_events` con `UNIQUE (provider, event_id)`. ⚠️ **La protección real es el índice al insertar, no un `exists()` previo**: dos entregas simultáneas del mismo evento pasarían la comprobación a la vez.
+
+### Eventos que se escuchan
+
+| Evento de Stripe | Significa |
+|---|---|
+| `checkout.session.completed` | Pagado con tarjeta → confirma la reserva |
+| `checkout.session.async_payment_succeeded` | El voucher de OXXO/SPEI se pagó → confirma la reserva |
+| `checkout.session.async_payment_failed` | El voucher de OXXO/SPEI caducó sin pagarse |
+| `payment_intent.payment_failed` | Rechazado → **no** libera fechas: puede reintentar con otra tarjeta |
+| `payment_intent.succeeded` | Solo por si un cobro se abrió sin sesión (por ejemplo desde el panel de Stripe). No casa con ningún pago del sistema; se registra para conciliar |
+| `charge.refunded` | Reembolso confirmado |
+
+⚠️ **`checkout.session.async_payment_succeeded` no es opcional.** Con OXXO la sesión se completa al emitir la ficha, no al cobrar: sin este evento, una reserva pagada en la tienda no se confirmaría nunca.
+
+⚠️ **El objeto del evento es la sesión, no el intent:** trae `amount_total`, no `amount`. Leer solo `amount` deja el importe en null justo en el evento que confirma la reserva.
+
+### ⚠️ Vencimiento de OXXO y SPEI
+
+Si el voucher vive 3 días y el sistema expira la reserva a las 48 h, alguien puede pagar en la tienda una reserva que ya se liberó y quizá se revendió.
+
+⚠️ **Con Checkout alojado esto se invierte: el apartado de un voucher NO se toca.** `session.expires_at` es cuándo deja de abrirse la página de pago, no cuándo caduca el voucher — y Stripe no admite sesiones de más de 24 h. Aplicarlo al apartado recortaría a un día el plazo de 72 h de la reserva, que es exactamente el error que este apartado advierte, al revés. El huésped entra a la página una vez, saca la ficha y la paga tres días después. Para tarjeta sí se usa, porque ahí la sesión *es* el plazo.
+
+### ⚠️ Reembolsar un pago en efectivo
+
+Un pago hecho con OXXO **no se devuelve en efectivo**: Stripe pide los datos bancarios del huésped para transferir. Ese flujo necesita una pantalla propia cuando se active el método — no es el mismo botón que el reembolso de tarjeta.
 
 Referenciado desde: `../arquitectura/`, secciones 1, 6, 7 y 10.

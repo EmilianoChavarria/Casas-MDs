@@ -128,8 +128,10 @@ booking_nights   (id, booking_id FK, date, price, season_id FK NULL, day_type)
                   -- snapshot congelado del precio noche por noche (sección 15.1)
 
 payments         (id, payable_type, payable_id,   -- POLIMÓRFICO: bookings o
-                   provider ENUM(stripe,mercadopago,externo),  -- experience_bookings
+                   provider ENUM(stripe,externo),  -- experience_bookings
                    provider_ref, amount, currency, status, paid_at)
+                  -- UNIQUE (provider, provider_ref): los webhooks se
+                  --   reintentan, y el mismo evento no debe crear dos pagos
                   -- 'externo': cobro fuera del sistema (efectivo, transferencia
                   --            directa, o reserva previa al lanzamiento)
                   -- INDEX (payable_type, payable_id) · ver sección 20.7
@@ -259,9 +261,9 @@ Una reserva sin pagar aparta fechas. **El plazo lo determina el medio de pago**,
 | Medio | Plazo | Motivo |
 |---|---|---|
 | Tarjeta (Stripe / MP) | **30 minutos** | El cobro es inmediato; apartar más solo bloquea inventario |
-| **OXXO / SPEI** | **El vencimiento real de la referencia** que emite Mercado Pago (típicamente ~3 días) | La persona tiene que ir físicamente a la tienda |
+| **OXXO / SPEI** | **El vencimiento real del voucher** que emite Stripe (típicamente ~3 días) | La persona tiene que ir físicamente a la tienda o hacer la transferencia |
 
-⚠️ **`expires_at` se deriva del vencimiento que devuelve el proveedor, no de una constante.** Si Mercado Pago emite una referencia válida 3 días y el sistema expira a las 48 h, alguien puede pagar en OXXO una reserva que ya se liberó — y quizá se revendió. Tomando la fecha del proveedor y añadiendo un pequeño margen, ese escenario deja de ser posible por construcción.
+⚠️ **`expires_at` se deriva del vencimiento que devuelve el proveedor, no de una constante.** Si Stripe emite un voucher válido 3 días y el sistema expira a las 48 h, alguien puede pagar en OXXO una reserva que ya se liberó — y quizá se revendió. Tomando la fecha del proveedor y añadiendo un pequeño margen, ese escenario deja de ser posible por construcción.
 
 **Job cada 5 minutos** (`ExpirePendingBookings`): busca `status = pending AND expires_at < now()`, y por cada una, dentro de una transacción:
 
@@ -285,6 +287,8 @@ customers ──1:N─> bookings
 ```
 
 **Por qué `customers.user_id` es nullable — y es la razón principal de este diseño:** el admin puede dar de alta una reserva de alguien que llamó por teléfono. Se crea el `customer` sin `user`. Si esa persona más adelante entra con Google usando el mismo correo, **se vincula a su ficha existente y ve su historial de reservas**. Con un modelo donde huésped y cuenta son lo mismo, esa reserva telefónica quedaría huérfana para siempre.
+
+⚠️ **Actualización (28-ago-2026): reservar desde el sitio exige sesión.** El cliente pidió cerrar el checkout a cuentas, así que `POST /bookings` pasó al grupo `auth:sanctum` (detalle en 06). Esto NO cambia el esquema: `customers.user_id` sigue siendo nullable por el motivo del párrafo anterior —el alta telefónica desde el panel—, y la vinculación por correo al registrarse sigue funcionando igual. Lo que se cerró es una puerta del sitio público, no el modelo.
 
 **Por qué `users.password` es nullable:** una cuenta creada con "Continuar con Google" nunca tuvo contraseña. Guardar un hash falso o una cadena vacía es peor — ver las reglas de la sección 7.3.
 

@@ -47,8 +47,8 @@ Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justif
 | 02 | Base de Datos — MySQL 8 | [`02-base-datos-mysql.md`](servicios/02-base-datos-mysql.md) | ✅ Self-hosted gratis |
 | 03 | Cache y Colas — Redis | [`03-cache-colas-redis.md`](servicios/03-cache-colas-redis.md) | ✅ Self-hosted gratis / Upstash free permanente |
 | 04 | Almacenamiento de Imágenes — Cloudflare R2 | [`04-almacenamiento-r2.md`](servicios/04-almacenamiento-r2.md) | ✅ Free tier permanente |
-| 05 | Pagos — Stripe | [`05-pagos-stripe.md`](servicios/05-pagos-stripe.md) | ✅ Sandbox gratis e ilimitado |
-| 06 | Pagos — Mercado Pago | [`06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md) | ✅ Usuarios de prueba gratis |
+| 05 | **Pagos — Stripe** (única pasarela) | [`05-pagos-stripe.md`](servicios/05-pagos-stripe.md) | ✅ Sandbox gratis e ilimitado |
+| ~~06~~ | ~~Pagos — Mercado Pago~~ — **descartado**, ver [`06`](servicios/06-pagos-mercadopago.md) | [`06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md) | — |
 | 07 | Correo Transaccional — Resend / Amazon SES | [`07-correo-transaccional.md`](servicios/07-correo-transaccional.md) | ✅ Resend free permanente ⚠️ SES solo 12 meses |
 | 08 | Google Maps — solo Places Autocomplete (admin) | [`08-google-maps.md`](servicios/08-google-maps.md) | ✅ 10,000 llamadas gratis/API/mes (plan Essentials) |
 | 09 | Cloudflare — DNS, CDN, WAF | [`09-cloudflare-dns-cdn.md`](servicios/09-cloudflare-dns-cdn.md) | ✅ Plan Free permanente |
