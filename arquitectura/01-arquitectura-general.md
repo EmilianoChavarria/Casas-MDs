@@ -44,7 +44,7 @@ Arquitectura: **Backend API-first (Laravel) + Frontend desacoplado (Next.js)**, 
                                                      │  - Recálculo precios│
                                                      └─────────────────────┘
 
-Servicios externos: Stripe/Mercado Pago (pagos), Resend/SES (correo),
+Servicios externos: Stripe (pagos), Resend/SES (correo),
 Google Maps (geolocalización), Sentry (errores), Cloudflare (CDN/DNS/WAF)
 ```
 

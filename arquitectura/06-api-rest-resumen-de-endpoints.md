@@ -40,11 +40,23 @@ GET    /api/v1/properties/{slug}
 GET    /api/v1/properties/{id}/availability?month=2026-08   # incluye precio por noche y min_nights
 POST   /api/v1/bookings/quote                               # desglose de precio; NO aparta fechas
 POST   /api/v1/promotions/validate                          # { code, property_id, checkin, checkout }
-POST   /api/v1/bookings
 GET    /api/v1/bookings/{id}/status
 POST   /api/v1/webhooks/stripe
-POST   /api/v1/webhooks/mercadopago
 ```
+
+### Huésped con sesión
+```
+POST   /api/v1/bookings                                     # ⚠️ exige sesión (ver abajo)
+GET    /api/v1/me/bookings                                  # historial de la cuenta
+```
+
+⚠️ **Reservar exige sesión.** Es una decisión del cliente (28-ago-2026) y **se aparta de 5.6**, donde reservar como invitado era deliberado para no perder reservas por la fricción del registro. `POST /bookings` vive ahora en el grupo `auth:sanctum`; revertirlo es sacarlo de ese grupo, nada más.
+
+`customers.user_id` **sigue siendo nullable** y no es contradicción: el admin captura reservas por teléfono de gente sin cuenta. Lo que cambió es quién puede reservar **desde el sitio**, no qué reservas puede haber en la base.
+
+`GET /me/bookings` filtra por `customers.user_id`, no por `bookings.user_id`: la reserva cuelga de la ficha de cliente, y esa ficha es la que se vincula a la cuenta. Así una reserva telefónica aparece en el historial en cuanto la persona se registra con el mismo correo, sin tocar las reservas.
+
+⚠️ **Con sesión, el dueño de la reserva lo decide la cuenta, NO el correo del formulario.** `BookingService::resolveCustomer()` busca primero la ficha de `user_id` y solo cae al correo si no existe; y nunca adopta una ficha que ya es de otra cuenta. Sin esa regla, escribir el correo de otra persona colgaría la reserva de SU ficha y saldría en el historial de esa persona. Reservar a nombre de un tercero es legítimo; heredar su historial no.
 
 ### Reseñas (sección 5.4)
 ```

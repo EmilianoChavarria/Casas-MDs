@@ -80,39 +80,95 @@ Estándar del mercado para geocodificación, con mejor cobertura y precisión de
 
 ## Configuración
 
+> ✅ **Implementado.** Lo que sigue es lo que hay en el código, no una
+> propuesta. Rama `feat/ubicacion-y-calendario`.
 
-### Variables de entorno
+### ⚠️ Desviación respecto al plan: una sola llave, y de servidor
+
+Este documento proponía **dos llaves**: una pública en el frontend
+restringida por *referrer*, y otra de servidor restringida por IP. Se
+implementó **solo la segunda**, y todo pasa por Laravel.
+
+El motivo: una llave de Places en el frontend es pública por definición
+—se copia de la pestaña de red— y Places se factura por petición.
+Restringirla por dominio ayuda, pero no impide que la use un script
+**desde ese dominio**. Con la llave en el servidor, el único que puede
+gastarla es un admin con sesión, que es exactamente quien da de alta
+casas. El coste es un salto de red más por pulsación; a cambio, el gasto
+tiene dueño y se puede cortar.
+
+Esto también resuelve el "riesgo principal a controlar" que menciona este
+documento más arriba: el endpoint está detrás de `auth:sanctum` + `admin`
+y con `throttle`, y el *session token* lo pone el backend.
+
+### Variables de entorno (`.env` de Laravel)
 ```
-# Frontend (Next.js) — clave pública restringida por dominio
-NEXT_PUBLIC_GOOGLE_MAPS_KEY=AIzaSy_xxxxx_frontend
-
-# Backend (Laravel) — clave restringida por IP, usada solo para geocoding server-side
-GOOGLE_MAPS_SERVER_KEY=AIzaSy_xxxxx_backend
+GOOGLE_MAPS_API_KEY=AIzaSy_xxxxx
 ```
 
-### Uso en frontend (resumen)
-```tsx
-// components/property/PropertyMap.tsx
-<APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!}>
-  <Map center={{ lat: property.lat, lng: property.lng }} zoom={14}>
-    <Marker position={{ lat: property.lat, lng: property.lng }} />
-  </Map>
-</APIProvider>
-```
+Una sola. **No existe `NEXT_PUBLIC_GOOGLE_MAPS_KEY`** y no debe crearse.
 
-### Geocoding server-side al guardar propiedad (resumen)
-```php
-// PropertyService.php
-public function geocodeAddress(string $address): array
-{
-    $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
-        'address' => $address,
-        'key' => config('services.google_maps.server_key'),
-    ]);
+APIs a habilitar: **Places API (New)** y **Maps Static API**. No hace
+falta Maps JavaScript API ni Geocoding API: el detalle del lugar ya trae
+`lat`/`lng`, así que la geocodificación aparte sobra.
 
-    $location = $response->json('results.0.geometry.location');
-    return ['lat' => $location['lat'], 'lng' => $location['lng']];
-}
-```
+Restricción de la llave: **direcciones IP** (la del VPS), y restricción
+de API a esas dos.
+
+### Endpoints
+
+Todos bajo `/api/v1/admin/geo`, con sesión de admin:
+
+| Ruta | Qué hace |
+|---|---|
+| `GET geo/status` | ¿Hay llave configurada? |
+| `GET geo/autocomplete?q=&session=` | Sugerencias mientras se escribe |
+| `GET geo/places/{placeId}` | Ficha del lugar, desmenuzada, más la zona |
+| `GET geo/static-map?lat=&lng=&zoom=` | Imagen del mapa, servida por nosotros |
+
+`geo/places/{placeId}` devuelve además la **zona**: si la colonia ya es
+una zona del catálogo llega emparejada, y si no, llega una propuesta para
+crearla de un clic. Ver la sección de zonas en `../arquitectura/`.
+
+### Degradación sin llave
+
+Sin `GOOGLE_MAPS_API_KEY`, `geo/status` responde `configured: false` y el
+formulario pide la dirección a mano, con latitud y longitud. **El alta de
+casas no puede quedar bloqueada porque nadie haya dado de alta la
+facturación de Google todavía.**
+
+Los fallos se distinguen: **503** `geo_not_configured` (falta la llave →
+captura manual) y **502** `geo_unavailable` (Google falló → se
+reintenta). Sin esa distinción las dos cosas llegarían como un 500 y el
+formulario no sabría cuál de las dos ofrecer.
+
+### Control de gasto ya implementado
+
+- **Una petición por pausa al teclear**, no por letra. Sin esto, escribir
+  una dirección son ~20 cargos.
+- **Session token** en cada sesión de captura, puesto por el backend.
+- **La ficha de un lugar se cachea una semana**: abrir la misma casa a
+  editar diez veces es una sola llamada facturable.
+
+### El mapa: Static Maps, no el SDK
+
+La vista previa del formulario es un **PNG** servido por Laravel, con el
+pin movible haciendo clic sobre la imagen (la conversión píxel↔coordenada
+es Web Mercator, en `MapPreview.tsx`).
+
+No es un adorno: Google devuelve el punto de la *dirección*, que en una
+calle larga cae en el centro de la manzana y no en la casa.
+
+Se eligió Static Maps sobre el SDK de mapas porque la preview solo tiene
+que enseñar dónde cayó el pin. Cargar la librería entera para pintar un
+cuadro de 640×320 significa traer un mapa interactivo, sus cookies y una
+llave pública para nada. **Esto no contradice la decisión 17.9**: los
+mapas *públicos* siguen sin ser de Google — hoy son un enlace a Google
+Maps por `lat`/`lng` desde la ficha, y Leaflet sigue pendiente
+([`13-mapas-tiles.md`](13-mapas-tiles.md)).
+
+⚠️ Static Maps **es un SKU aparte** y consume su propia cuota de 10,000
+llamadas gratis al mes. Cada redibujado del mapa (mover el pin, cambiar
+el zoom) es una llamada.
 
 Referenciado desde: `../arquitectura/`, secciones 5 y 10.

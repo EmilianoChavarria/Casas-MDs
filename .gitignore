@@ -1,0 +1,7 @@
+# Exports del prototipo de Claude Design.
+#
+# Son la FUENTE de los tokens, no documentación: pesan más de un mega
+# entre imágenes y quedan obsoletos en cuanto el diseño cambia. Lo que
+# se versiona es el resultado —los tokens en Casas_front/globals.css—,
+# no el archivo del que salieron.
+*.zip
