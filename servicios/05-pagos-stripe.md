@@ -22,7 +22,13 @@ Procesar el pago de una reserva. Genera un `PaymentIntent` que se confirma vía 
 
 - Mejor documentación y SDK del mercado, ampliamente soportado por Laravel (`laravel/cashier` opcional, o SDK directo `stripe/stripe-php`).
 - Ideal para tarjetas internacionales (turistas extranjeros reservando casas en México).
-- Checkout embebido (Stripe Elements) o alojado (Stripe Checkout) según el nivel de personalización deseado.
+- Checkout **alojado** (Stripe Checkout). ✅ **Decidido (28-ago-2026).**
+
+**Por qué alojado y no Elements:** el número de tarjeta nunca toca este dominio, así que el alcance de PCI se queda en SAQ-A, el más bajo. Y resuelve los tres métodos que el sistema ofrece —tarjeta, OXXO y SPEI— en una sola integración: con Elements, la ficha de OXXO y la CLABE de SPEI necesitan pantalla propia, porque no caben en un formulario de tarjeta. Se paga con menos control del aspecto: la página de pago es de Stripe, personalizable con logo y colores pero no con el diseño del sitio.
+
+⚠️ **Implica una Checkout Session, no un PaymentIntent suelto.** Un PaymentIntent solo devuelve un `client_secret` para montar el formulario uno mismo; no tiene página propia a la que mandar al huésped. Durante un tiempo el backend creó PaymentIntents mientras el frontend esperaba una `checkout_url` que nunca llegaba, y el botón de pagar no hacía nada.
+
+⚠️ **`payments.provider_ref` es la Checkout Session (`cs_…`), no el PaymentIntent.** Es lo que existe al abrir el cobro y lo que viaja en los webhooks `checkout.session.*`. Pero **un reembolso va contra el PaymentIntent**, que solo se conoce cuando el webhook confirma el pago: por eso se guarda aparte en `provider_payment_ref`. Reembolsar contra la sesión falla.
 
 **Por qué una sola pasarela:** un panel para conciliar, un modelo de webhooks que mantener y un juego de credenciales que rotar. La integración de pagos es la parte más delicada del sistema, y duplicarla duplica el riesgo, no solo el trabajo.
 
@@ -113,14 +119,22 @@ La implementación usa una tabla `webhook_events` con `UNIQUE (provider, event_i
 
 | Evento de Stripe | Significa |
 |---|---|
-| `payment_intent.succeeded` | Pagado → confirma la reserva |
-| `payment_intent.payment_failed` | Rechazado → **no** libera fechas: puede reintentar con otra tarjeta |
+| `checkout.session.completed` | Pagado con tarjeta → confirma la reserva |
+| `checkout.session.async_payment_succeeded` | El voucher de OXXO/SPEI se pagó → confirma la reserva |
 | `checkout.session.async_payment_failed` | El voucher de OXXO/SPEI caducó sin pagarse |
+| `payment_intent.payment_failed` | Rechazado → **no** libera fechas: puede reintentar con otra tarjeta |
+| `payment_intent.succeeded` | Solo por si un cobro se abrió sin sesión (por ejemplo desde el panel de Stripe). No casa con ningún pago del sistema; se registra para conciliar |
 | `charge.refunded` | Reembolso confirmado |
+
+⚠️ **`checkout.session.async_payment_succeeded` no es opcional.** Con OXXO la sesión se completa al emitir la ficha, no al cobrar: sin este evento, una reserva pagada en la tienda no se confirmaría nunca.
+
+⚠️ **El objeto del evento es la sesión, no el intent:** trae `amount_total`, no `amount`. Leer solo `amount` deja el importe en null justo en el evento que confirma la reserva.
 
 ### ⚠️ Vencimiento de OXXO y SPEI
 
-El plazo del apartado **debe salir de la respuesta de Stripe** (`next_action.*.expires_after`), no de una constante nuestra. Si el voucher vive 3 días y el sistema expira la reserva a las 48 h, alguien puede pagar en la tienda una reserva que ya se liberó y quizá se revendió.
+Si el voucher vive 3 días y el sistema expira la reserva a las 48 h, alguien puede pagar en la tienda una reserva que ya se liberó y quizá se revendió.
+
+⚠️ **Con Checkout alojado esto se invierte: el apartado de un voucher NO se toca.** `session.expires_at` es cuándo deja de abrirse la página de pago, no cuándo caduca el voucher — y Stripe no admite sesiones de más de 24 h. Aplicarlo al apartado recortaría a un día el plazo de 72 h de la reserva, que es exactamente el error que este apartado advierte, al revés. El huésped entra a la página una vez, saca la ficha y la paga tres días después. Para tarjeta sí se usa, porque ahí la sesión *es* el plazo.
 
 ### ⚠️ Reembolsar un pago en efectivo
 
