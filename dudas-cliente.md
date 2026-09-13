@@ -18,6 +18,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ⏳ Pendiente | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
+| D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
 
 ---
 
@@ -687,6 +688,65 @@ Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos dife
 ### Qué se bloquea mientras no se responda
 
 El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.
+
+---
+
+## D13 — ¿Se aplica un margen sobre el tipo de cambio?
+
+**Estado:** ⏳ Pendiente · Amplía **D1**
+
+### Contexto
+
+El sitio ya enseña los precios en pesos, dólares y dólares canadienses. La conversión usa el tipo de cambio de referencia del **Banco Central Europeo**, que se trae todos los días de forma automática.
+
+Ese tipo de cambio es el **medio de mercado**: el punto intermedio entre lo que se compra y lo que se vende. **Nadie opera a ese precio.** Cuando el dinero llega de verdad, Stripe convierte a su propia tasa, que lleva su diferencial —del orden del **1 % al 2 %**.
+
+El resultado, con una casa de 3.396 MXN por noche:
+
+| Paso | Importe |
+|---|---|
+| El huésped ve y paga | 200.94 USD |
+| Stripe convierte a pesos a su tasa | |
+| Te deposita | **≈ 3.330 MXN** |
+
+**Faltan unos 66 pesos.** No es un error de nadie: es lo que cuesta convertir divisa. La única pregunta es **quién lo paga**.
+
+Sin margen, lo paga el negocio, en cada reserva que se cobre en dólares o en dólares canadienses.
+
+### Qué es el margen
+
+Un colchón que se aplica al convertir, y **solo al convertir**. Con un 3 %:
+
+| | Tasa | 3.396 MXN |
+|---|---|---|
+| Sin margen | 0.05917 | 200.94 USD |
+| Con 3 % | 0.05740 | **194.98 USD** |
+
+El huésped ve 194.98 en vez de 200.94: paga menos dólares por la misma casa, y al convertirse a pesos llegan los 3.396 que se querían cobrar.
+
+⚠️ **El margen NO toca el precio en pesos.** El precio en la moneda base es el que se escribe en el panel; el margen solo afecta a la conversión hacia otras monedas. Aplicarlo a los pesos subiría el precio a todo el mundo sin querer.
+
+### La pregunta concreta
+
+> ¿Se aplica un margen al convertir a dólares y dólares canadienses, y de cuánto?
+>
+> - **0 %** — el precio en dólares es el más atractivo posible, y el diferencial de cambio lo absorbe el negocio en cada reserva. Tiene sentido si vender en dólares trae huéspedes que de otro modo no reservarían.
+> - **2–3 %** — cubre el diferencial de Stripe y el negocio sale a cero. Es lo más habitual en el sector.
+> - **4–5 %** — cubre y deja algo de margen. Empieza a notarse frente a un competidor que no lo aplique.
+
+### Lo que hay que saber antes de responder
+
+**El precio en dólares dejará de coincidir con el que da Google.** Hoy la diferencia es de un 0.08 % —dieciséis centavos en una reserva de doscientos dólares— porque el Banco Central Europeo publica una vez al día y Google enseña una tasa casi en vivo. Nadie lo nota.
+
+Con un 3 % de margen sí se nota, y un huésped que compare puede preguntar. Es una práctica normal y extendida, pero conviene decidirlo a sabiendas y no descubrirlo por una queja.
+
+**No cambia lo que ya se cobró.** Cada reserva guarda congelada la tasa con la que se cotizó (`bookings.fx_rate`), así que ajustar el margen no altera ninguna reserva existente.
+
+### Qué se bloquea mientras no se responda
+
+Nada del desarrollo: el sitio funciona hoy con margen **0 %**, que es el valor por omisión. Lo que se bloquea es saber si el negocio está perdiendo un 1–2 % en cada reserva cobrada en divisa extranjera.
+
+Es configuración, no código: al responder se ajusta un valor y aplica desde la siguiente cotización.
 
 ---
 
