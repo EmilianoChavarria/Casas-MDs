@@ -322,7 +322,7 @@ La alternativa —una tabla `experience_payments` aparte— evita la migración 
 | ISH (Impuesto Sobre Hospedaje) | Aplica | ❌ **No** — grava el hospedaje, no los servicios turísticos |
 | DSA / cuota por noche | Aplica | ❌ No |
 
-⚠️ **Esto hay que confirmarlo con el contador del cliente**, no darlo por bueno desde aquí: la tasa de ISH y su base son estatales, y algunas entidades gravan servicios turísticos conexos. Ver **D10**. Si se aplica ISH a un tour por copiar la configuración de las casas, se está cobrando de más al huésped y declarando mal.
+✅ **Confirmado por el cliente (D10, 14-sep-2026): solo IVA.** Sin ISH, sin DSA ni ningún otro cargo. La configuración ya lo refleja (IVA `applies_to = both`; ISH y DSA `lodging`). ⚠️ El riesgo que queda es de configuración: si al ISH o al DSA se les pone `both`, los tours empiezan a cobrarlos, se le cobra de más al huésped y se declara mal.
 
 **Consecuencia técnica:** el motor de cargos e impuestos necesita **perfiles fiscales por tipo de producto**, no una configuración global. Es un cambio pequeño si se hace al construir el motor (fase 6) y una refactorización si se hace después.
 

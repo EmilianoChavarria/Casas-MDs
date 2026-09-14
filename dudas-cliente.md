@@ -15,7 +15,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D7 | Política de cancelación y reembolsos | ✅ Resuelta | Reservas, pagos, disponibilidad |
 | D8 | Textos legales: aviso de privacidad y términos | ⏳ En curso | **Publicar app de Google, activar Stripe en producción** |
 | D9 | ¿Los guías entran al sistema, y cómo? | ✅ Resuelta | Panel del guía, rol y autenticación (sección 20) |
-| D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ⏳ Pendiente | Total de la experiencia, facturación |
+| D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ✅ Resuelta | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
 | D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
@@ -40,7 +40,7 @@ que se asumió al aplicarlo.
 | **D7** | **Configuración general + política individual por casa** que la sobrescribe. |
 | **D8** | ⏳ Un abogado los está preparando. Se avanza con textos de relleno. |
 | **D9** | **Sí: los guías entran con cuenta propia y panel propio.** |
-| **D10** | ⏳ Pendiente. Se avanza con **solo IVA** y perfil fiscal separado del de las casas. |
+| **D10** | ✅ **Solo IVA** (resuelta el 14-sep-2026). Sin ISH, sin DSA ni ningún otro cargo: precio más IVA. |
 | **D11** | **Los dos:** link por reserva (verificado) y link de grupo como respaldo. |
 | **D12** | **Cobro completo al reservar.** |
 
@@ -597,7 +597,15 @@ El sprint S1 del módulo (rol, autenticación e invitación de guías) y la deci
 
 ## D10 — Impuestos de las experiencias: ¿solo IVA, o también ISH?
 
-**Estado:** ⏳ Pendiente · ⚠️ **Pregunta para el contador** · Amplía **D5**
+**Estado:** ✅ Resuelta (14-sep-2026) — **solo IVA** · Amplía **D5**
+
+> **Respuesta del cliente:** a las experiencias se les aplica **únicamente el IVA**. No llevan ISH, ni DSA, ni ningún otro impuesto o cargo: el total es el precio más el IVA.
+>
+> **Efecto en el sistema — no requiere cambiar código:**
+>
+> - La configuración ya lo refleja. En `TaxSeeder`, el IVA tiene `applies_to = both`, y el ISH y el DSA tienen `applies_to = lodging`, así que una experiencia solo recoge el IVA.
+> - El cálculo del total de un tour (`ExperiencePricingService`) lee los impuestos por `applies_to` en vez de tenerlos fijos en el código. ⚠️ Pero vive en la rama **`feat/experiencias-s3`, que no se ha fusionado** (último cambio: 26-ago-2026). Hasta que entre, las experiencias no tienen checkout y no se cobra nada.
+> - ⚠️ El riesgo que queda es de configuración: si alguien cambia el ISH o el DSA a `both` desde el panel, los tours empiezan a cobrarlos. El perfil fiscal de las experiencias tiene que seguir separado del de las casas.
 
 ### Contexto
 

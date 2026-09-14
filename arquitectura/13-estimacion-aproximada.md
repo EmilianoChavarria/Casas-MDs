@@ -2,7 +2,7 @@
 
 Estimación para **una persona a tiempo completo**. No incluye el trabajo del cliente (redactar descripciones, revisar traducciones, conseguir fotografías) ni tiempos de espera por decisiones pendientes.
 
-Las filas marcadas ✅ tienen su duda resuelta (respuestas del 25-ago-2026). Las marcadas ⏳ siguen dependiendo de una duda abierta en [`dudas-cliente.md`](../dudas-cliente.md) y su rango puede moverse según la respuesta: quedan **D8** (textos legales, en curso) y **D10** (impuestos de los tours).
+Las filas marcadas ✅ tienen su duda resuelta (respuestas del 25-ago-2026). Las marcadas ⏳ siguen dependiendo de una duda abierta en [`dudas-cliente.md`](../dudas-cliente.md) y su rango puede moverse según la respuesta: queda **D8** (textos legales, en curso). **D10** se resolvió el 14-sep-2026: los tours llevan solo IVA.
 
 | Módulo | Horas | Complejidad | Prioridad | Riesgo principal |
 |---|---|---|---|---|
@@ -29,7 +29,7 @@ Las filas marcadas ✅ tienen su duda resuelta (respuestas del 25-ago-2026). Las
 | Páginas legales + aceptación versionada ⏳ **D8** (en curso) | 4–6 | Baja | **Alta** | Bloquea publicar la app de Google y activar cobros reales |
 | Reportes | 12–20 | Media | Baja-Media | Consultas agregadas costosas; normalizar 3 monedas |
 | Seguridad/hardening | 12–16 | Media | Alta | — |
-| **Experiencias / tours guiados** (sección 20) ⏳ **D10** | **180–246** | **Alta** | Media | Sobreventa de cupo, aislamiento de datos del guía, reseñas por link abierto |
+| **Experiencias / tours guiados** (sección 20) ✅ **D10** | **180–246** | **Alta** | Media | Sobreventa de cupo, aislamiento de datos del guía, reseñas por link abierto |
 | Despliegue producción | 12–16 | Media | Alta | Primer deploy real, subdominio WebSocket |
 | **Total estimado** | **~642–882 h** | | | (**~16–22 semanas** a tiempo completo, una persona) |
 
@@ -59,7 +59,7 @@ La estimación original era de **264–352 h**. Casi todo el aumento son **reque
 
 Dos partidas —auth de huéspedes y sistema de diseño— **no son alcance nuevo: eran huecos**. El diseño original solo contemplaba inicio de sesión de administradores, y el prototipo ya traía pantallas de registro y perfil de huésped que ninguna tabla soportaba.
 
-✅ **Diez de las doce dudas están resueltas** (25-ago-2026), así que el total ya no depende de ellas. Quedan dos frentes abiertos y **ninguno mueve las horas de forma significativa**: **D10** (impuestos del tour) cambia una configuración fiscal, no el motor, porque el perfil por tipo de producto ya está previsto; y **D8** (textos legales) es contenido del cliente, no desarrollo. Lo que ambos sí bloquean es la **salida a producción**.
+✅ **Diez de las doce dudas están resueltas** (25-ago-2026), así que el total ya no depende de ellas. **D10** ya se resolvió (solo IVA), y coincidía con el valor por omisión: no movió horas. Queda **D8** (textos legales), que es contenido del cliente y no desarrollo; lo que sí bloquea es la **salida a producción**.
 
 ---
 

@@ -33,7 +33,7 @@
 
 **Fases desbloqueadas (respuestas del 25-ago-2026):** las fases 5, 6, 8, 9 y 15 ya tienen sus decisiones cerradas — **D1** a **D7**, **D9**, **D11** y **D12**. Ver el resumen de respuestas en [`dudas-cliente.md`](../dudas-cliente.md).
 
-**Lo que sigue bloqueado:** el total de las experiencias depende de **D10** (impuestos del tour, pendiente del contador) y la fase 17 sigue bloqueada por **D8** (textos legales, en preparación con un abogado), que impide activar cobros reales y publicar la app de Google. Ninguno de los dos frena el desarrollo: frenan la salida a producción.
+**Lo que sigue bloqueado:** la fase 17 sigue bloqueada por **D8** (textos legales, en preparación con un abogado), que impide activar cobros reales y publicar la app de Google. Ninguno de los dos frena el desarrollo: frenan la salida a producción.
 
 ---
 
