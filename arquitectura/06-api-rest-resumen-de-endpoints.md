@@ -93,6 +93,7 @@ POST   /api/v1/conversations/guest/{token}/messages         # throttle 20/min
 POST   /api/v1/conversations/guest/{token}/read
 
 POST   /api/v1/experiences/{slug}/private-requests          # abre la conversación: { conversation_id, token, has_account }
+POST   /api/v1/properties/{slug}/conversations              # "Pregúntale al anfitrión": { body, client_uuid, full_name?, email? } — sesión opcional, throttle 10/h
 
 POST   /api/broadcasting/auth                               # autorización de canales (Sanctum, cookie del SPA)
 ```

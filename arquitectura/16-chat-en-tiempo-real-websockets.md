@@ -8,6 +8,9 @@ Mensajería directa entre el **huésped** (o visitante interesado) y el **admini
 
 **Sí incluye:**
 - Chat 1-a-1 huésped ↔ administración, opcionalmente anclado a una propiedad, una reserva, una experiencia o una **solicitud de salida privada** (20.5.1: la solicitud abre la conversación).
+- **Puntos de entrada construidos:** "Pregúntale al anfitrión" en la ficha de cada casa (con o sin cuenta), "Escribir sobre esta reserva" en el detalle de la reserva del huésped, la solicitud de salida privada y "Mis mensajes". Con sesión, escribir otra vez sobre la misma casa o la misma reserva **continúa** la conversación abierta; sin sesión nunca se reutiliza (bastaría con escribir el correo de otra persona para entrar a su hilo).
+- En la bandeja, el equipo ve **si el cliente escribe desde una reserva** (código, fechas, huéspedes, estado) o si no, y cuántas reservas tiene (en esa casa y en total).
+- Chat de experiencias con el guía: **no incluido**, pendiente de **D15**.
 - Entrega en tiempo real, indicador de "escribiendo…", acuse de lectura, contador de no leídos.
 - Historial persistente y consultable desde el dashboard admin.
 - Adjuntar imágenes (ej. comprobante de pago, foto de un desperfecto).
