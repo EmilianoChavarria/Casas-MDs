@@ -690,6 +690,12 @@ Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos dife
 
 ⚠️ **Si cancela el operador, el reembolso es del 100 %, sin descontar comisiones.** No es negociable: cancela el negocio, no el cliente. Descontar la comisión de Stripe de un reembolso que el huésped no provocó es una disputa de tarjeta asegurada — y en una disputa, quien cancela pierde.
 
+### Cómo quedó aplicado (14-sep-2026)
+
+- **Horas para decidir: configurables por experiencia** (1 a 168, por defecto 24), no un valor global. Se copian a cada salida al crearla, así que cambiarlas no mueve el corte de salidas ya vendidas.
+- **Para el mínimo solo cuentan los lugares pagados**, no los apartados en checkout. En cuanto los pagados llegan al mínimo y la salida tiene guía, se confirma y se le avisa al guía, sin esperar al corte.
+- **Si no se llega al mínimo, se cancela y se reembolsa completo.** El prototipo decía "reagendamos" y "no se cobra hasta confirmar"; ambos textos se cambiaron para que coincidan con esta respuesta. Detalle en la sección 20.5 de arquitectura.
+
 ### Qué se bloquea mientras no se responda
 
 El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.

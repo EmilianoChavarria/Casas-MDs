@@ -140,8 +140,11 @@ GET                   /api/v1/admin/reports/favorites       # señal de demanda:
 
 ### Experiencias — público (sección 20)
 ```
-GET    /api/v1/experiences?category=naturaleza|mar|gastronomia&date_from=
+GET    /api/v1/experience-categories                         # las encendidas, traducidas (?lang=)
+GET    /api/v1/experiences?category={slug}&date_from=        # sin salidas privadas
 GET    /api/v1/experiences/{slug}
+POST   /api/v1/experiences/{slug}/private-requests           # solicitud de salida privada; no aparta nada
+GET    /api/v1/experiences/private/{token}                   # la salida privada, solo con su liga (20.5.1)
 GET    /api/v1/experiences/{slug}/departures?month=2026-09   # fecha, hora, cupo restante, precio
 GET    /api/v1/experiences/{slug}/reviews?page=              # solo published + consent_publish
 GET    /api/v1/guides/{slug}                                 # perfil público del guía
@@ -166,10 +169,15 @@ Ambas rutas van con `throttle:5,60` por IP y fuera de `auth:sanctum`. El `GET` d
 ```
 GET    /api/v1/guide/summary                        # carga de la semana
 GET    /api/v1/guide/departures?from=&to=           # SOLO las suyas (scope, no policy)
-GET    /api/v1/guide/departures/{id}                # roster: personas, pagado sí/no, notas
-GET    /api/v1/guide/departures/{id}/review-link    # token + URL lista para compartir
+GET    /api/v1/guide/departures/{id}                # roster, punto de encuentro, cosas necesarias (gear)
+POST   /api/v1/guide/departures/{id}/complete       # finaliza y emite review_url (la del QR); 409 si no ha empezado
+GET    /api/v1/guide/profile
+PUT    /api/v1/guide/profile                        # SOLO bio (presentación), languages, whatsapp_e164
+POST   /api/v1/guide/profile/photo
 GET    /api/v1/guide/reviews                        # sus reseñas
 ```
+
+Una salida de otro guía responde **404, no 403**: un 403 confirmaría que el id existe.
 
 ⚠️ Estos endpoints **filtran por `guide_id` en la consulta**, no solo con una policy. Un listado nunca pasa por `authorize()` fila a fila (20.4).
 
@@ -192,21 +200,28 @@ Los importes van en **moneda base**, aunque el huésped haya pagado en dólares:
 
 ### Experiencias — administración
 ```
-GET|POST|PUT|DELETE  /api/v1/admin/experiences[/{id}]
-POST                  /api/v1/admin/experiences/{id}/images
-PUT                   /api/v1/admin/experiences/{id}/items       # incluye / no incluye
+GET|POST|PUT|DELETE  /api/v1/admin/experiences[/{id}]           # DELETE archiva; items { included, excluded, guide_gear } van en POST/PUT
+POST|DELETE           /api/v1/admin/experiences/{id}/images[/{image}]   # 422 al borrar la única foto de una publicada
 
-GET|POST|PUT|DELETE  /api/v1/admin/guides[/{id}]
-PATCH                 /api/v1/admin/guides/{id}/deactivate       # 409 si tiene salidas futuras
+GET|POST              /api/v1/admin/experience-categories
+PUT                   /api/v1/admin/experience-categories/{id}
+PATCH                 /api/v1/admin/experience-categories/{id}/toggle
+
+GET|POST|PUT          /api/v1/admin/guides[/{id}]                # show trae métricas, próximas salidas y reseñas
+POST                  /api/v1/admin/guides/{id}/photo
 POST                  /api/v1/admin/guides/{id}/invite           # crea el user con role=guide
-GET                   /api/v1/admin/guides/{id}/reviews
+POST                  /api/v1/admin/guides/{id}/deactivate       # 409 si tiene salidas futuras
 
-GET                   /api/v1/admin/departures?experience_id=&from=&to=
-POST                  /api/v1/admin/departures                   # incluye repetición en lote
-PUT                   /api/v1/admin/departures/{id}              # 422 si capacity < seats_taken
-PATCH                 /api/v1/admin/departures/{id}/cancel       # { reason } — reembolsa y avisa
-GET                   /api/v1/admin/departures/{id}/attendees
-GET                   /api/v1/admin/departures/{id}/review-link
+GET                   /api/v1/admin/experience-departures?experience_id=&from=&to=   # máx. 2 meses; trae paid_seats
+GET                   /api/v1/admin/experience-departures/metrics?month=YYYY-MM
+POST                  /api/v1/admin/experience-departures        # fecha + hora de Cancún; repetición o privada
+GET                   /api/v1/admin/experience-departures/{id}   # con reservas y asistentes
+PATCH                 /api/v1/admin/experience-departures/{id}   # guía, cupo (422 bajo lo reservado), notas
+POST                  /api/v1/admin/experience-departures/{id}/cancel     # { reason } — reembolsa y avisa
+POST                  /api/v1/admin/experience-departures/{id}/complete   # 409 si no ha empezado
+
+GET                   /api/v1/admin/experience-private-requests?status=
+PATCH                 /api/v1/admin/experience-private-requests/{id}      # { status, admin_notes }
 
 PATCH                 /api/v1/admin/experience-reviews/{id}/hide
 PATCH                 /api/v1/admin/experience-reviews/{id}/unhide
@@ -215,7 +230,9 @@ GET                   /api/v1/admin/reports/experiences          # ocupación e 
 GET                   /api/v1/admin/reports/guides               # tours, ocupación, calificación
 ```
 
-`POST /admin/departures` acepta `repeat: { weekdays: [2,4], weeks: 8 }` y responde con el resumen del lote (`created`, `skipped` por colisión de `UNIQUE(experience_id, starts_at)`), no con un error si alguna fecha ya existía.
+`POST /admin/experience-departures` acepta `repeat_weekdays: [2,4]` (ISO, 1 = lunes) y `repeat_until` (máx. 6 meses) y responde con el resumen del lote (`created`, `skipped` por colisión de `UNIQUE(experience_id, starts_at)`), no con un error si alguna fecha ya existía. Con `is_private` crea una sola salida con su `private_url`; si trae `private_request_id`, la solicitud pasa a `scheduled`.
+
+Cupo, mínimo, horas para decidir y precio **se copian de la experiencia** a la salida al crearla (20.5); los que vengan en la petición los reemplazan solo para esa salida.
 
 ### Ejemplo de respuesta (`GET /api/v1/properties/{slug}`)
 
