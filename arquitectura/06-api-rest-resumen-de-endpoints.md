@@ -78,16 +78,26 @@ PATCH  /api/v1/admin/reviews/{id}/unhide
 
 ### Chat (sección 16)
 ```
-GET    /api/v1/conversations                                # las del usuario autenticado
-POST   /api/v1/conversations                                # { property_id?, booking_id?, subject? }
-GET    /api/v1/conversations/{id}
-GET    /api/v1/conversations/{id}/messages?before_id=&after_id=&limit=50   # keyset, no offset
-POST   /api/v1/conversations/{id}/messages                  # { body, client_uuid, attachment? }
-PATCH  /api/v1/conversations/{id}/read                      # marca leídos hasta un message_id
-GET    /api/v1/conversations/unread-count
+# Cliente con sesión — filtran por pertenencia: una ajena responde 404
+GET    /api/v1/me/conversations                             # con unread_count y último mensaje
+POST   /api/v1/me/conversations                             # { body, client_uuid, subject?, property_slug?, booking_code? }
+GET    /api/v1/me/conversations/{id}                        # conversación + últimos 50 mensajes
+GET    /api/v1/me/conversations/{id}/messages?before_id=|after_id=   # keyset, no offset
+POST   /api/v1/me/conversations/{id}/messages               # { body?, client_uuid, attachment? } — throttle 30/min
+POST   /api/v1/me/conversations/{id}/read                   # marca leído lo que le llegó
 
-POST   /broadcasting/auth                                   # autorización de canales (Sanctum)
+# Visitante sin cuenta, por su liga (16.4) — sin socket, consulta cada 5 s
+GET    /api/v1/conversations/guest/{token}
+GET    /api/v1/conversations/guest/{token}/messages?after_id=
+POST   /api/v1/conversations/guest/{token}/messages         # throttle 20/min
+POST   /api/v1/conversations/guest/{token}/read
+
+POST   /api/v1/experiences/{slug}/private-requests          # abre la conversación: { conversation_id, token, has_account }
+
+POST   /api/broadcasting/auth                               # autorización de canales (Sanctum, cookie del SPA)
 ```
+
+Mensajes idempotentes por `client_uuid`: un reintento devuelve el mensaje que ya existe. Adjuntos solo imagen (JPG/PNG/WebP, 8 MB).
 
 `after_id` es el parámetro de reconexión: tras una caída del WebSocket, el cliente pide lo que se perdió. El WS **no** reenvía historial.
 
@@ -126,9 +136,14 @@ DELETE                /api/v1/admin/cohosts/{id}/properties/{propertyId}
 DELETE                /api/v1/admin/cohosts/{id}                 # desactiva la cuenta
 
 # Chat (bandeja de administración)
-GET                   /api/v1/admin/conversations?status=open&assigned_to=
-PATCH                 /api/v1/admin/conversations/{id}/assign
-PATCH                 /api/v1/admin/conversations/{id}/close
+# Administradores y personal; guías no.
+GET                   /api/v1/admin/conversations?status=&search=&mine=   # paginada, con unread_count
+GET                   /api/v1/admin/conversations/unread-count
+GET                   /api/v1/admin/conversations/{id}           # con cliente, anclas y solicitud privada
+GET                   /api/v1/admin/conversations/{id}/messages?before_id=|after_id=
+POST                  /api/v1/admin/conversations/{id}/messages  # quien responde una sin dueño se la queda
+POST                  /api/v1/admin/conversations/{id}/read
+PATCH                 /api/v1/admin/conversations/{id}           # { status: open|pending|closed, assigned_user_id }
 
 GET                   /api/v1/admin/reports/occupancy
 GET                   /api/v1/admin/reports/revenue

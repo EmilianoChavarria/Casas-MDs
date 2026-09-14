@@ -284,10 +284,12 @@ Cancelar a mano una salida hace exactamente lo mismo que la rama 2, pidiendo mot
 
 El cliente puede pedir la experiencia **solo para su grupo**, a un precio mayor al habitual. No se cotiza en línea: cambia horario, a veces el recorrido, y el precio se platica.
 
-1. **Solicitud** desde la ficha: nombre, correo, teléfono, fecha deseada, tamaño del grupo y mensaje. No aparta ni cotiza nada; crea `experience_private_requests` (`new`) y avisa por correo a los administradores activos.
-2. **El administrador contacta** al cliente (la bandeja lleva notas y estados `contacted` / `declined`) y acuerda fecha y precio.
-3. **"Armar salida"** abre el alta de salida ya marcada como privada y ligada a la solicitud, que pasa a `scheduled`. Al crearla se enseña la **liga de pago** para mandársela al cliente.
+1. **Solicitud** desde la ficha: nombre, correo, teléfono, fecha deseada, tamaño del grupo y mensaje. No aparta ni cotiza nada; crea `experience_private_requests` (`new`) **y abre una conversación** (sección 16) con un mensaje de sistema que resume grupo y fecha. Al cliente lo lleva directo a la conversación —con cuenta, en "Mis mensajes"; sin cuenta, por su liga, que también le llega por correo— y a los administradores activos les avisa con botón a la conversación.
+2. **Se platica por mensaje** desde **Mensajes** del panel: fecha, horario, precio. La bandeja de solicitudes sigue existiendo para filtrar por estado y tomar notas, con botón "Abrir conversación".
+3. **"Armar salida"** (desde la conversación o desde la solicitud) abre el alta de salida ya marcada como privada y ligada a la solicitud, que pasa a `scheduled`. Al crearla, **la liga de pago llega al cliente en la misma conversación** como mensaje de sistema, con fecha, hora y precio tomados de la salida.
 4. El cliente paga por el **checkout normal**: mismas reglas de cupo, mínimo y corte que cualquier salida.
+
+La liga de pago va como mensaje **de sistema** y no del administrador a propósito: fecha, hora, precio y liga salen de la salida recién creada, no de algo que alguien tecleó y pudo copiar mal.
 
 Una salida privada **no aparece en el listado ni en la ficha** (`scopePubliclyListed`), **no se repite** y su mínimo sugerido es 1: la paga un solo grupo. Se abre con `/experiencias/privada/{private_token}`.
 
