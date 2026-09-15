@@ -19,6 +19,27 @@ hotfix/*    → fixes urgentes desde main
 | QA | mirror de prod con datos anonimizados | automático al mergear a `qa` (opcional) |
 | Producción | rama `main` | automático tras PR aprobado + CI verde |
 
+### 9.2.1 Entorno local hoy (sin Docker)
+
+La tabla dice Docker Compose, pero hoy el desarrollo corre con los servicios **nativos en Windows**. Para probar el sistema completo tienen que estar arriba **todos** estos procesos; faltar uno no da error, solo hace que algo "no pase":
+
+| Proceso | Comando | Si no corre… |
+|---|---|---|
+| MySQL | servicio en `3306` | nada funciona |
+| API | `php artisan serve --port=8000` | el front no carga datos |
+| Cola | `php artisan queue:work --tries=3` | no sale ningún correo, no se traduce nada, el chat no se difunde |
+| Scheduler | `php artisan schedule:work` | no vencen los apartados, no salen recordatorios ni la lista del guía |
+| WebSockets | `php artisan reverb:start --port=8080` | el chat no llega en tiempo real (el invitado sigue con polling) |
+| Front | `npm run dev` (Next, `3000`) | — |
+| Correo | `mailpit.exe` (SMTP `1025`, bandeja http://localhost:8025) | los correos fallan al enviarse (ver `servicios/07`) |
+| Webhooks de Stripe | `stripe listen --forward-to http://127.0.0.1:8000/api/v1/webhooks/stripe` | **se paga en Stripe pero la reserva se queda "Pendiente de pago"** hasta vencer |
+
+Notas que ya costaron tiempo:
+
+- ⚠️ **El worker no ve cambios de código ni de `.env`**: carga todo al arrancar. Después de cambiar cualquiera de los dos, `php artisan queue:restart` y volver a levantarlo. Un worker viejo ejecuta código que ya no existe y falla con errores que no corresponden al código actual.
+- **`stripe listen` imprime el secreto** del webhook; tiene que coincidir con `STRIPE_WEBHOOK_SECRET` (`stripe listen --print-secret`). Si un pago se hizo sin el listener, se recupera reenviando el evento: `stripe events resend evt_…` (el de `checkout.session.completed` de esa sesión).
+- **Un solo Mailpit.** Con dos instancias los correos llegan a una y el navegador abre la otra.
+- En producción nada de esto se levanta a mano: cola, scheduler y Reverb van bajo Supervisor (sección 8) y el webhook se registra en el panel de Stripe con su propio secreto.
 ### 9.3 GitHub Actions (esqueleto, reutilizando tu experiencia con FTP/CI ya construida)
 
 ```yaml

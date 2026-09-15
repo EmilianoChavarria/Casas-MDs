@@ -134,6 +134,23 @@ experience_reviews (id, departure_id FK, experience_id FK, guide_id FK,
                     -- INDEX (guide_id, status, published_at DESC)
 ```
 
+### Traducción de lo incluido y de la presentación del guía
+
+Construido el 15-sep-2026 (`Casas_back#60`). La traducción automática de la experiencia cubría nombre y descripciones, pero **"qué incluye", "qué no incluye" y la presentación del guía** se quedaban en español en las fichas en inglés y francés. Ahora pasan por el mismo flujo que las casas (D2): observer → `TranslateModel` después del commit, estados `draft/machine/reviewed` y `source_hash` para no gastar DeepL si el texto no cambió.
+
+```
+experience_item_translations (id, experience_item_id FK, locale CHAR(2),
+                              label VARCHAR(160), source_hash, status, translated_at)
+                              -- UNIQUE (experience_item_id, locale)
+guide_translations           (id, guide_id FK, locale CHAR(2), bio TEXT,
+                              source_hash, status, translated_at)
+                              -- UNIQUE (guide_id, locale)
+```
+
+- Solo se traducen los ítems `included` y `excluded`. **`guide_gear` no**: solo lo lee el guía, en español.
+- `ExperienceItemsSync` **conserva las filas que no cambiaron** al guardar la experiencia. Antes borraba y recreaba todos los ítems, y con eso cada guardado perdía las traducciones y volvía a pagar DeepL por textos idénticos.
+- La presentación se retraduce también cuando la edita el propio guía desde su panel. Si se vacía, se borran sus traducciones: una bio traducida sin original sería texto huérfano en la ficha.
+- `ExperienceResource` devuelve la versión del `?lang=` pedido con respaldo al español, nunca vacío.
 ### Relaciones clave
 
 - `experiences 1—N experience_departures 1—N experience_bookings`
@@ -516,19 +533,19 @@ Extiende la sección 19. **Cuatro correos nuevos al huésped** y **tres avisos a
 | E2 | Huésped | Al confirmarse el pago | Plaza asegurada + política de cancelación |
 | E3 | Huésped | **Salida − 24 h** | Recordatorio: hora, punto de encuentro, qué llevar, contacto del guía |
 | E4 | Huésped | Al cancelarse la salida | Motivo, reembolso íntegro y plazo |
-| G1 | Guía | Al asignársele una salida | Fecha, hora, experiencia |
-| G2 | Guía | **Salida − 24 h** | Roster: personas, notas operativas, estado de pago |
+| G1 | Guía | Al asignársele una salida (y al que la pierde, si se reasigna) | Experiencia, fecha y hora local, punto de encuentro, estado (sujeta a mínimo / confirmada), liga a su panel. Un lote de salidas recurrentes = **un solo correo** con todas las fechas |
+| G2 | Guía | **Salida − 24 h**, solo salidas `confirmed` con guía | Roster: personas pagadas con sus lugares, asistentes y notas operativas, punto de encuentro, cosas que llevar (`guide_gear`). **Sin importes, método de pago ni correo o teléfono de los clientes** (mismo criterio que su panel, 20.9) |
 | G3 | Guía | Al cancelarse una salida suya | Motivo |
 | G4 | Guía | **Al confirmarse su salida** (mínimo pagado + guía, 20.5) | Experiencia, fecha y hora, personas |
 | A1 | Administradores activos | Al llegar una solicitud privada | Experiencia, grupo, fecha deseada, contacto |
 
-G3, G4 y A1 quedaron construidos con las reglas de mínimo y salidas privadas (14-sep-2026). Las horas de los correos se escriben en la zona de la salida (`America/Cancun` por defecto), no en UTC.
+G3, G4 y A1 quedaron construidos con las reglas de mínimo y salidas privadas (14-sep-2026); G1 y G2 el 15-sep-2026 (`Casas_back#61`, `#62`). G1 es idempotente por guía **y momento de la asignación**: quitarle la salida a un guía y devolvérsela le vuelve a avisar, guardar sin cambiar de guía no. G2 sale del mismo job diario que los recordatorios, una vez por salida. Las horas de los correos se escriben en la zona de la salida (`America/Cancun` por defecto), no en UTC.
 
 La solicitud de reseña **no es un correo nuevo**: la entrega el guía en persona al terminar (20.8.C). Si más adelante se quiere automatizar, es el correo E5 y encaja en el mismo job diario.
 
 **Idempotencia:** `notification_log` de 19.4 pasa a polimórfico (`notifiable_type`, `notifiable_id`, `type`) con el mismo `UNIQUE`. Sin eso, el recordatorio de 24 h se envía dos veces al primer despliegue que solape el scheduler.
 
-**Multi-idioma:** 4 correos × 3 idiomas = **12 textos nuevos** de huésped. Los del guía van en **un solo idioma** (el suyo, campo `guides.languages`) — es personal interno, no hace falta triplicarlos.
+**Multi-idioma:** 4 correos × 3 idiomas = **12 textos nuevos** de huésped. Los del guía van **en español**: el panel y el equipo operan en español, y `guides.languages` dice qué idiomas guía, no en cuál lee su correo. Es personal interno, no hace falta triplicarlos.
 
 ---
 
