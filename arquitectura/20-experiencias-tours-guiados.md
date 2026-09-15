@@ -357,6 +357,14 @@ Esto significa dos promedios distintos en el sistema: el que se enseña en la p�
 
 ---
 
+### Al marcar la salida como realizada
+
+`DepartureService::complete()` hace tres cosas en una transacción: la salida pasa a `completed` y emite el token de reseña, suma un tour al guía y **pasa sus reservas pagadas (`confirmed`) a `completed`** — como las de casas al día siguiente del checkout (19.6). Los apartados sin pagar y las canceladas no se tocan: no se realizaron.
+
+⚠️ **"Lugares pagados" son `confirmed` + `completed`**, en todas partes (`ExperienceDeparture::paidSeats()` y la constante `PAGADAS` de los controladores). Hasta el 15-sep-2026 el modelo contaba solo `confirmed`: una salida con reservas `completed` tenía 0 lugares pagados, el link de reseñas respondía "ya recibió todas sus reseñas" sin ninguna y la lista del guía decía 0 personas mientras las enlistaba.
+
+---
+
 ## 20.7 Pagos, precios e impuestos
 
 ### Los pagos se comparten; la tabla cambia
