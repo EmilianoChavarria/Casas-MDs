@@ -33,9 +33,11 @@ Auditoría estándar en todas (`created_at, updated_at, created_by, updated_by, 
 
 ```sql
 -- ── Catálogo ──────────────────────────────────────────────────────────
-experiences        (id, name, slug UNIQUE, category ENUM(naturaleza,mar,gastronomia),
+experiences        (id, name, slug UNIQUE, category_id FK,
                      short_description, description,
                      duration_minutes, default_capacity, default_price, currency,
+                     min_to_operate SMALLINT DEFAULT 1,
+                     decision_hours SMALLINT DEFAULT 24,  -- 1–168, ver 20.5
                      meeting_point_name, meeting_point_address,
                      meeting_lat, meeting_lng, meeting_notes,
                      what_to_bring TEXT NULL, cancellation_policy_id FK NULL,
@@ -43,12 +45,22 @@ experiences        (id, name, slug UNIQUE, category ENUM(naturaleza,mar,gastrono
                      rating DECIMAL(2,1) NULL, reviews_count INT DEFAULT 0)
                     -- rating/reviews_count desnormalizados, mismo criterio que 5.4
 
+experience_categories (id, slug UNIQUE, name, order, is_active)
+experience_category_translations (id, experience_category_id FK, locale CHAR(2), name,
+                     status ENUM(draft,machine,reviewed))
+                    -- tabla y no ENUM: el admin crea "cueva" o "comida" sin
+                    -- migración. Apagada deja de salir en el filtro público,
+                    -- pero no se borra: dejaría experiencias huérfanas
+
 experience_images   (id, experience_id FK, url, is_cover, order, alt_text)
 
-experience_items    (id, experience_id FK, kind ENUM(included,excluded),
+experience_items    (id, experience_id FK, kind ENUM(included,excluded,guide_gear),
                      label, icon NULL, order)
                     -- "qué incluye" y "qué NO incluye" en una sola tabla:
-                    -- son la misma lista con signo contrario
+                    -- son la misma lista con signo contrario.
+                    -- guide_gear = "cosas necesarias para el guía" (snorkel,
+                    -- aletas, botiquín…): SOLO la ve el guía en su panel;
+                    -- ningún recurso público la devuelve
 
 experience_translations (id, experience_id FK, locale CHAR(2),
                      name, short_description, description,
@@ -72,15 +84,25 @@ guide_experience    (guide_id FK, experience_id FK)   -- pivot: qué puede guiar
 experience_departures (id, experience_id FK, guide_id FK NULL,
                      starts_at DATETIME, timezone VARCHAR,
                      capacity SMALLINT, min_to_operate SMALLINT DEFAULT 1,
+                     decision_hours SMALLINT,             -- copiadas de la experiencia al crearla
                      seats_taken SMALLINT DEFAULT 0,      -- desnormalizado, ver 20.3
                      price_per_person DECIMAL, currency CHAR(3),
                      status ENUM(scheduled,confirmed,cancelled,completed),
                      cancelled_reason NULL, cancelled_at NULL,
                      internal_notes TEXT NULL,
                      review_token CHAR(32) NULL, review_token_expires_at NULL,
-                     recurrence_group_id CHAR(36) NULL)   -- une las salidas creadas en lote
+                     recurrence_group_id CHAR(36) NULL,   -- une las salidas creadas en lote
+                     is_private BOOLEAN DEFAULT 0,
+                     private_token CHAR(32) NULL UNIQUE)  -- liga de pago de la privada (20.5.1)
                     -- UNIQUE (experience_id, starts_at)
                     -- INDEX (starts_at, status), (guide_id, starts_at)
+
+experience_private_requests (id, experience_id FK, full_name, email, phone NULL,
+                     preferred_date DATE NULL, group_size SMALLINT, message TEXT NULL,
+                     locale CHAR(2), status ENUM(new,contacted,scheduled,declined),
+                     admin_notes TEXT NULL, departure_id FK NULL,
+                     handled_by FK NULL, handled_at NULL)
+                    -- la solicitud no aparta ni cotiza: el admin arma la salida
 
 -- ── Reservas de experiencia ───────────────────────────────────────────
 experience_bookings (id, departure_id FK, customer_id FK,
@@ -176,6 +198,10 @@ Cuando el guía sí necesita el panel, se le crea el `user` con `role = guide` y
 
 ✅ **Decidido (D9, 25-ago-2026): los guías sí entran, con panel propio.** Se dan de alta igual que el personal (5.6): el admin crea la cuenta con su correo y la persona puede entrar con Google si coincide. El alta de guía y el alta de usuario siguen siendo dos acciones distintas — un guía externo puntual puede quedarse sin acceso.
 
+✅ **Aplicado (14-sep-2026): el alta vive en Experiencias → Guías, no en Equipo.** Equipo ya no ofrece el rol `guide`. Un guía sin ficha (idiomas, experiencias que puede guiar, presentación) no se puede asignar a nada, y crearlo desde Equipo dejaba cuentas con rol de guía sin guía detrás. La casilla "dar acceso al panel" del alta crea el usuario y manda la invitación; también se puede dar después desde la ficha.
+
+**Presentación** (`guides.bio`) es lo que lee el cliente en la ficha de la experiencia. La editan **el administrador y el propio guía**. El guía solo cambia de sí mismo presentación, idiomas, WhatsApp y foto: nombre, certificación y zona son lo que respalda ante el cliente que es un guía acreditado, y los lleva el administrador.
+
 ### Los guías solo ven lo suyo
 
 Regla dura, con dos capas:
@@ -214,31 +240,58 @@ $departures = ExperienceDeparture::where('guide_id', $user->guide->id)
 
 Una salida puede requerir un **mínimo de personas para operar** (`min_to_operate`). Es una regla de rentabilidad: llevar a un guía y una lancha por dos personas puede costar más de lo que ingresa.
 
+**Solo cuentan los lugares pagados.** El mínimo se compara contra los asientos de las reservas `confirmed`/`completed`, **no** contra `seats_taken`: ese contador incluye los apartados de checkout que quizá nunca se paguen (20.3). Una salida que "llega a 4" con dos pagos y dos carritos abiertos no tiene grupo, y confirmársela al guía sería prometerle un trabajo que puede no existir.
+
 **Máquina de estados de la salida:**
 
 ```
-scheduled ──(seats_taken >= min_to_operate)──> confirmed ──(pasó la fecha)──> completed
-    │                                              │
-    └────────────(cancelada por admin)─────────────┴──> cancelled
+scheduled ──(pagados >= min_to_operate Y hay guía)──> confirmed ──(se finaliza)──> completed
+    │                                                    │
+    └──(corte sin mínimo, o cancelada por admin)─────────┴──> cancelled
 ```
 
 | Estado | Significa | ¿Se puede reservar? |
 |---|---|---|
-| `scheduled` | Publicada, aún no alcanza el mínimo | ✅ Sí |
-| `confirmed` | Alcanzó el mínimo, opera seguro | ✅ Sí, hasta el cupo |
+| `scheduled` | Aún no llega al mínimo pagado, o no tiene guía | ✅ Sí |
+| `confirmed` | Llegó al mínimo pagado con guía asignado: opera seguro y el guía ya lo sabe | ✅ Sí, hasta el cupo |
 | `cancelled` | No opera | ❌ No |
-| `completed` | Ya ocurrió | ❌ No — habilita reseñas |
+| `completed` | Ya ocurrió (la finaliza el guía o el admin) | ❌ No — emite el link de reseñas |
 
-⚠️ **La interfaz pública no debe decir "confirmada" mientras esté en `scheduled`.** Si se cobra por adelantado y la salida se cancela por falta de gente, el huésped que creyó tener plaza garantizada tiene razón en quejarse. La tarjeta de reserva debe mostrarlo: *"Esta salida opera con un mínimo de 4 personas. Si no se alcanza, se cancela 24 h antes y se reembolsa el total."*
+⚠️ **La interfaz pública no debe decir "confirmada" mientras esté en `scheduled`.** Si se cobra por adelantado y la salida se cancela por falta de gente, el huésped que creyó tener plaza garantizada tiene razón en quejarse. La tarjeta de reserva debe mostrarlo: *"Esta salida opera con un mínimo de 4 personas. Si no se alcanza, se cancela 24 h antes y se reembolsa el total"* — con el mínimo y las horas de **esa** salida.
 
-**Job `EvaluateDepartureMinimum`** — corre a diario y evalúa las salidas dentro de la ventana de decisión (`departures.decision_hours`, sugerido 24 h antes):
+**Confirmación inmediata, no en lote.** Cada pago confirmado llama a `DepartureService::confirmIfReady()`, que bloquea la salida (`lockForUpdate`) y vuelve a contar: en cuanto los pagados alcanzan el mínimo y hay guía, la salida pasa a `confirmed` y **se avisa al guía** por correo (después del commit, e idempotente por `notification_log`). Asignar guía a una salida que ya tenía el mínimo hace lo mismo. Esperar al corte para confirmar dejaría al guía sin saber hasta la víspera si trabaja.
 
-1. `seats_taken >= min_to_operate` → `confirmed`, avisar al guía y a los asistentes.
-2. `seats_taken < min_to_operate` → `cancelled`, **reembolso íntegro** a todos, liberar, avisar.
+✅ **Horas para decidir, configurables por experiencia.** `experiences.decision_hours` (1–168, por defecto 24) se **copia a la salida al crearla**, igual que cupo, mínimo y precio. Cambiar la experiencia no mueve el corte de salidas que ya tienen gente pagada: el cliente compró con la regla que vio.
+
+**Job `EvaluateDepartureMinimum`** — corre **cada hora**, porque el corte es por salida y no por día. Toma las salidas `scheduled` con `starts_at <= ahora + decision_hours`:
+
+1. Pagados `>= min_to_operate` y con guía → `confirmed`. Es la red de seguridad por si la confirmación inmediata no ocurrió.
+2. Si no → `cancelled`, **reembolso íntegro** a todos, liberar, avisar a los clientes **y al guía**.
 
 ⚠️ **Reembolso íntegro, sin excepción y sin descontar comisión del procesador.** Cancela el operador, no el huésped. Descontar la comisión de Stripe de un reembolso que el cliente no provocó es la clase de detalle que genera una disputa de tarjeta — y en una disputa, quien cancela pierde. Esto interactúa con **D7** y debe quedar por escrito en los términos (**D8**).
 
 Cancelar a mano una salida hace exactamente lo mismo que la rama 2, pidiendo motivo (queda en `cancelled_reason` y en `audit_logs`).
+
+**Textos del prototipo que cambiaron** (14-sep-2026), para que diseño y contenido no los reintroduzcan:
+
+| El prototipo decía | Queda | Por qué |
+|---|---|---|
+| *"No se cobra hasta confirmar"* | Se cobra al reservar | **D12**: cobro completo al reservar. Cobrar al confirmar exige guardar la tarjeta y cobrar días después, con rechazos que se descubren tarde |
+| *"Si no se llega al mínimo, reagendamos"* | Se cancela y se reembolsa el total | Reagendar es un flujo entero (ofrecer otra salida con cupo, esperar a que acepte) y mientras tanto el dinero queda retenido |
+| *"Escribir a Itzel"* · *"Respuesta 2 h"* | Se omiten | No hay canal de mensajes con el guía, y un tiempo de respuesta publicado es una promesa que nadie mide |
+
+### 20.5.1 Salidas privadas
+
+El cliente puede pedir la experiencia **solo para su grupo**, a un precio mayor al habitual. No se cotiza en línea: cambia horario, a veces el recorrido, y el precio se platica.
+
+1. **Solicitud** desde la ficha: nombre, correo, teléfono, fecha deseada, tamaño del grupo y mensaje. No aparta ni cotiza nada; crea `experience_private_requests` (`new`) y avisa por correo a los administradores activos.
+2. **El administrador contacta** al cliente (la bandeja lleva notas y estados `contacted` / `declined`) y acuerda fecha y precio.
+3. **"Armar salida"** abre el alta de salida ya marcada como privada y ligada a la solicitud, que pasa a `scheduled`. Al crearla se enseña la **liga de pago** para mandársela al cliente.
+4. El cliente paga por el **checkout normal**: mismas reglas de cupo, mínimo y corte que cualquier salida.
+
+Una salida privada **no aparece en el listado ni en la ficha** (`scopePubliclyListed`), **no se repite** y su mínimo sugerido es 1: la paga un solo grupo. Se abre con `/experiencias/privada/{private_token}`.
+
+⚠️ **La liga lleva un token aleatorio, no el id de la salida.** Con un id secuencial bastaría cambiar un número para ver —y comprar— la salida privada de otro grupo.
 
 ---
 
@@ -270,6 +323,8 @@ Esto significa dos promedios distintos en el sistema: el que se enseña en la p�
 2. **Caduca** (`review_token_expires_at`, sugerido 14 días). Coincide con la ventana de respuesta real y cierra la puerta después.
 3. **Tope de reseñas = personas confirmadas de esa salida.** Si fueron 8, la novena entrega se rechaza. Es el límite que hace inútil el reenvío masivo del link.
 4. **Rate limit por IP** sobre el endpoint público (`throttle:5,60`) y `submitted_ip` guardado, para poder ocultar en bloque un ataque evidente.
+
+**El QR del guía.** Al terminar, el guía pulsa **Finalizar** en el detalle de la salida (el botón solo aparece cuando la salida ya empezó). Eso la pasa a `completed`, emite el token (defensa 1) y enseña **a pantalla completa un QR de la liga de grupo**, que cada quien escanea con su teléfono. Si la salida ya estaba realizada y el token sigue vigente, el mismo botón vuelve a enseñar el QR. El administrador ve y copia la misma liga en el panel de la salida.
 
 ⚠️ **`review_token` debe ser aleatorio de 32 bytes (`Str::random(32)`), nunca el `id` de la salida ni un valor derivable.** Un token adivinable es no tener token.
 
@@ -336,8 +391,8 @@ La alternativa —una tabla `experience_payments` aparte— evita la migración 
 
 | Pantalla | Contenido | Notas técnicas |
 |---|---|---|
-| **Listado** `/experiencias` | Filtros por categoría (naturaleza · mar · gastronomía). Tarjetas: foto, duración, guía, calificación, precio por persona, disponibilidad | Server Component + ISR. La "disponibilidad" es la **próxima salida con cupo**, precalculada — no un `SUM()` por tarjeta |
-| **Detalle** `/experiencias/[slug]` | Galería en mosaico · descripción · qué incluye / qué **no** incluye · perfil del guía (bio + métricas de confianza) · punto de encuentro con mapa · reseñas · tarjeta de reserva sticky | SSR. `schema.org/Event` por salida; `AggregateRating` **solo** si se eligió el token por reserva (20.6) |
+| **Listado** `/experiencias` | Filtros por categoría (las que tenga encendidas el admin: mar, cueva, comida…; van en la URL, `?categoria=mar`). Tarjetas: foto, duración, guía, calificación, precio por persona, disponibilidad | Server Component + ISR. La "disponibilidad" es la **próxima salida con cupo**, precalculada — no un `SUM()` por tarjeta |
+| **Detalle** `/experiencias/[slug]` | Galería en mosaico · descripción · qué incluye / qué **no** incluye · perfil del guía (bio + métricas de confianza) · punto de encuentro con mapa · reseñas · tarjeta de reserva sticky · **solicitud de salida privada** (20.5.1) | SSR. `schema.org/Event` por salida; `AggregateRating` **solo** si se eligió el token por reserva (20.6) |
 
 **Tarjeta de reserva (sticky):** precio por persona → mini calendario de salidas → cupo restante por fecha → selector de personas **limitado al cupo de la fecha elegida** → desglose de total → política de cancelación.
 
@@ -353,48 +408,62 @@ La alternativa —una tabla `experience_payments` aparte— evita la migración 
 
 ### B. Administración → Experiencias
 
-Dos subsecciones bajo `/dashboard/experiences`.
+Cuatro subsecciones bajo `/dashboard/experiences`. Todas son solo de administrador: el personal (`staff`) entra al panel pero la API le responde 403 aquí.
 
-**B.1 Gestión de tours** (`/dashboard/experiences/departures`)
+**B.1 Gestión de tours** (`/dashboard/experiences`)
 
 | Bloque | Detalle |
 |---|---|
-| Métricas del mes | Salidas · ocupación media · personas confirmadas · promedio de reseñas |
-| Calendario de salidas | Por experiencia; cada día muestra `reservados/cupo` y el guía |
-| Panel de la salida seleccionada | Guía · límite de personas · hora · barra de ocupación · lista de asistentes · **cancelar salida** |
-| Modal **Nueva salida** | Experiencia · fecha · hora · límite · mínimo para operar · guía · precio · **repetición por días de la semana × nº de semanas** · notas internas |
-| Acción rápida | **Copiar link de reseña** |
+| Métricas del mes | Salidas · ocupación **pagada** · personas confirmadas · experiencias publicadas · calificación del mes |
+| Calendario de salidas | Mes completo, filtrable por experiencia; cada salida muestra hora y `pagadas/mínimo`, con color por estado y candado si es privada |
+| Panel de la salida seleccionada | Barra de pagados contra mínimo y cupo · cuándo se decide · apartados sin pagar (aparte, no cuentan) · guía · cupo · personas con sus notas · notas internas · **liga de pago** (privada) · **liga de reseñas** · marcar realizada · **cancelar salida** (con el resultado de reembolsos) |
+| Modal **Nueva salida** | Experiencia · fecha · hora (Cancún) · guía · cupo, mínimo y precio (vacíos = los de la experiencia) · **privada** · **repetición por días de la semana hasta una fecha** (máx. 6 meses) |
 
-⚠️ **La repetición genera N filas reales, no una regla.** Marcar "martes y jueves × 8 semanas" crea 16 salidas independientes con `recurrence_group_id` común. Una salida individual se edita o cancela sin tocar las demás — que es justo lo que hace falta cuando el guía se enferma un martes.
+⚠️ **La repetición genera N filas reales, no una regla.** Marcar "martes y jueves durante 8 semanas" crea 16 salidas independientes con `recurrence_group_id` común. Una salida individual se edita o cancela sin tocar las demás — que es justo lo que hace falta cuando el guía se enferma un martes.
 
 Al crear el lote hay que **avisar de las colisiones** (`UNIQUE(experience_id, starts_at)`) en vez de fallar entero: *"14 salidas creadas, 2 omitidas porque ya existían"*.
 
 ⚠️ **Reducir el límite de personas por debajo de `seats_taken` debe rechazarse.** Un cupo de 8 con 10 reservados es un tour que no cabe en la lancha. El formulario debe impedirlo y explicar por qué, no truncar en silencio.
 
-**B.2 Guías** (`/dashboard/experiences/guides`)
+**B.2 Catálogo** (`/dashboard/experiences/catalogo`)
 
 | Bloque | Detalle |
 |---|---|
-| Modal de alta | Nombre · correo · WhatsApp · idiomas · certificación · zona base · *(opcional)* acceso al panel |
+| Listado | Portada, estado, categoría, precio, cupo/mínimo/horas para decidir, salidas próximas |
+| Alta y edición | Datos · cupo, precio, **mínimo para operar** y **horas para decidir** · punto de encuentro · qué incluye / no incluye · **cosas necesarias para el guía** · fotos · estado |
+| Categorías | Crear, renombrar, apagar |
+
+Una experiencia nueva **nace en borrador**: las fotos se suben sobre una experiencia que ya existe, y publicar sin foto se rechaza (la tarjeta del listado saldría vacía).
+
+**B.3 Solicitudes privadas** (`/dashboard/experiences/solicitudes`) — bandeja por estado con datos de contacto, notas del equipo y **"Armar salida"** (20.5.1).
+
+**B.4 Guías** (`/dashboard/experiences/guides`)
+
+| Bloque | Detalle |
+|---|---|
+| Alta | Nombre · correo · teléfono y WhatsApp · idiomas · certificación y vigencia · zona base · **presentación** · experiencias que puede guiar · *(opcional)* acceso al panel |
 | Listado del equipo | Con estado, nº de tours y calificación |
-| Detalle del guía | Métricas · sus tours asignados con estado · sus reseñas · su link de reseñas · **dar de baja** |
+| Detalle del guía | Foto · métricas del mes · presentación · próximas salidas · reseñas · dar acceso al panel · **dar de baja** |
 
 ⚠️ El teléfono y el WhatsApp se guardan en **E.164** (`+521…`). Un campo de texto libre acaba con nueve formatos distintos y ningún `wa.me` que funcione.
 
 ### C. Panel del guía
 
-Entrada propia **"Guía"** en la navbar, visible solo con `role = guide`. Ruta `/guia`.
+Zona propia en `/guia`, solo con `role = guide`. Al entrar, el guía cae ahí directamente (no respeta `?next=`, igual que el co-anfitrión), y el menú de cuenta del sitio le enseña **"Mis salidas"**.
+
+**Pensada para el teléfono:** el guía la abre en el punto de encuentro. La navegación va arriba y en fila, no en una barra lateral escondida tras un menú.
 
 | Pantalla | Contenido |
 |---|---|
-| Resumen de carga | Tours de la semana, personas totales, próxima salida |
-| Próximos tours | Lista con fecha, hora, ocupación y estado |
-| Detalle del tour | Asistentes (personas por reserva, **estado de pago sí/no**, notas operativas) · copiar / enviar link de reseña al grupo |
-| Vista previa de la encuesta | Pestaña con la pantalla exacta que recibe el huésped |
+| Hoy | Próxima salida, salidas y personas de los próximos 7 días, calificación, tours realizados |
+| Salidas | Próximas y pasadas (30 días), agrupadas por día |
+| Detalle de la salida | Personas por reserva (**pagado sí/no**, notas operativas) · punto de encuentro con liga a mapas · **checklist de cosas necesarias para el guía** · **Finalizar → QR de reseñas** (20.6) |
+| Perfil | **Presentación**, idiomas, WhatsApp y foto |
+| Reseñas | Las suyas, con la calificación que le dieron a él |
 
-La pestaña de vista previa no es adorno: un guía que sabe qué se le va a preguntar al grupo pide la reseña mejor. Es la misma pantalla del punto D, en modo solo lectura y sin token.
+**El checklist se recuerda en el teléfono** (`localStorage`), no en el servidor. Es una ayuda para no olvidar las aletas, no un registro: si se pierde al cambiar de teléfono no pasa nada, y guardarlo sería inventar un dato que nadie consulta.
 
-⚠️ **"Enviar el link al grupo"** se resuelve con **deep link de WhatsApp** (`https://wa.me/<e164>?text=<url>`) y `mailto:`, abiertos desde el dispositivo del guía. **No** con la WhatsApp Business Cloud API — que es un servicio de pago, requiere verificación de negocio, plantillas aprobadas por Meta y una integración completa. Ver 20.11.
+La **vista previa de la encuesta** no se construyó en esta etapa: el QR lleva a la pantalla real. **Enviar la liga por WhatsApp** tampoco; si se pide, la recomendación sigue siendo el deep link `wa.me` desde el teléfono del guía, **no** la WhatsApp Business Cloud API (de pago, con verificación de negocio y plantillas aprobadas por Meta; ver 20.11).
 
 ### D. Captura de reseña (link externo) `/r/{token}`
 
@@ -448,6 +517,10 @@ Extiende la sección 19. **Cuatro correos nuevos al huésped** y **tres avisos a
 | G1 | Guía | Al asignársele una salida | Fecha, hora, experiencia |
 | G2 | Guía | **Salida − 24 h** | Roster: personas, notas operativas, estado de pago |
 | G3 | Guía | Al cancelarse una salida suya | Motivo |
+| G4 | Guía | **Al confirmarse su salida** (mínimo pagado + guía, 20.5) | Experiencia, fecha y hora, personas |
+| A1 | Administradores activos | Al llegar una solicitud privada | Experiencia, grupo, fecha deseada, contacto |
+
+G3, G4 y A1 quedaron construidos con las reglas de mínimo y salidas privadas (14-sep-2026). Las horas de los correos se escriben en la zona de la salida (`America/Cancun` por defecto), no en UTC.
 
 La solicitud de reseña **no es un correo nuevo**: la entrega el guía en persona al terminar (20.8.C). Si más adelante se quiere automatizar, es el correo E5 y encaja en el mismo job diario.
 
@@ -554,6 +627,11 @@ El módulo entra como **fase 15 del roadmap** (sección 12), después del dashbo
 - [ ] Un guía autenticado no ve, ni llamando a la API directamente, salidas de otro guía.
 - [ ] Un guía no ve totales ni métodos de pago en el roster.
 - [ ] Salida bajo el mínimo → se cancela sola, reembolsa el 100% y avisa a todos.
+- [ ] Mínimo 4 con 3 pagados y 1 apartado sin pagar → **no** se confirma.
+- [ ] El pago que completa el mínimo, con guía asignado, confirma la salida al momento y avisa al guía una sola vez.
+- [ ] Salida privada → no aparece en el listado ni en la ficha; abre solo por su liga.
+- [ ] Ningún recurso público devuelve las cosas necesarias para el guía.
+- [ ] Finalizar desde el panel del guía enseña un QR que abre `/r/{token}`.
 - [ ] Token de reseña caducado y token con cupo agotado → ambos rechazados.
 - [ ] Reseña sin consentimiento → guardada, no visible en público.
 - [ ] Experiencia con 0 reseñas → no pinta "0.0 ★".

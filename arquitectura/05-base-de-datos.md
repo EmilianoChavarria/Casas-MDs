@@ -146,10 +146,16 @@ messages         (id, conversation_id FK, sender_type ENUM(customer,admin,system
                    attachment_meta JSON NULL, client_uuid CHAR(36), read_at, created_at)
 
 -- ── Experiencias / tours guiados (esquema completo en la sección 20.2) ──
-experiences            (id, name, slug, category, duration_minutes, meeting_lat/lng, ...)
-guides                 (id, user_id FK NULL UNIQUE, ..., status)
+experience_categories  (id, slug, name, order, is_active)      -- + traducciones
+experiences            (id, name, slug, category_id FK, duration_minutes,
+                         min_to_operate, decision_hours, meeting_lat/lng, ...)
+experience_items       (id, experience_id FK, kind ENUM(included,excluded,guide_gear), label)
+guides                 (id, user_id FK NULL UNIQUE, ..., bio, status)
 experience_departures  (id, experience_id FK, guide_id FK NULL, starts_at,
-                         capacity, min_to_operate, seats_taken, status, review_token)
+                         capacity, min_to_operate, decision_hours, seats_taken,
+                         status, review_token, is_private, private_token)
+experience_private_requests (id, experience_id FK, group_size, preferred_date,
+                         status, departure_id FK NULL, ...)
 experience_bookings    (id, departure_id FK, customer_id FK, seats, total_price, status)
 experience_attendees   (id, experience_booking_id FK, full_name, notes_encrypted)
 experience_reviews     (id, departure_id FK, experience_id FK, guide_id FK,
