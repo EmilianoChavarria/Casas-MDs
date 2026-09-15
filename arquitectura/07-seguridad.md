@@ -52,8 +52,10 @@ Estas cinco reglas no son recomendaciones; omitir cualquiera abre una vía de ap
 | Validación de archivos | FormRequest con `mimes:jpg,png,webp`, `max:5120`, validar dimensiones y re-procesar con Intervention Image antes de subir a S3 (evita payloads maliciosos disfrazados de imagen) |
 | Logs | Laravel logging a stack (`daily` + envío a servicio externo tipo Papertrail/Logtail) |
 | Auditoría | Tabla `audit_logs` + trait `HasAuditColumns` (ya usado en tu proyecto escolar) para trazabilidad de cambios en propiedades/precios/reservas |
-| Backups | Backup automático diario de MySQL (mysqldump a S3/R2) + retención 30 días; probar restauración periódicamente |
-| HTTPS | Let's Encrypt (Certbot) o Cloudflare Full (Strict); forzar HTTPS en Nginx (redirect 301) y `Secure` cookies |
+| Backups | ✅ `spatie/laravel-backup` (fase 16). Solo la base, comprimida con gzip, a diario: `backup:clean` 02:30, `backup:run --only-db` 03:00 y `backup:monitor` 04:00, que avisa por correo si el último tiene más de un día. Los destinos salen de `BACKUP_DISKS`: en producción, un **bucket aparte** del de las fotos y sin URL pública, más una copia local. Retención: 7 días completos y 30 diarios. Cifrado opcional con `BACKUP_ARCHIVE_PASSWORD`, guardada fuera del servidor. ⚠️ Probar una restauración cada mes (`deploy/README.md`): un respaldo que nunca se restauró no está comprobado |
+| Encabezados de seguridad | ✅ API (`SecurityHeaders`, en todas las respuestas, incluidos errores y `/up`): `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, sin `X-Powered-By`, y HSTS **solo en producción sobre HTTPS**. Sitio (`next.config.ts`): los mismos con `SAMEORIGIN` y sin `X-Powered-By`. ⚠️ Sin CSP todavía: Stripe, Google Fonts, mosaicos del mapa, R2 y Reverb obligan a ajustarla primero en modo Report-Only |
+| Dependencias con vulnerabilidades | ✅ `composer audit` en el CI del backend: una vulnerabilidad conocida bloquea el merge |
+| HTTPS | Let's Encrypt (Certbot) o Cloudflare Full (Strict); forzar HTTPS en Nginx (redirect 301) y `Secure` cookies. Plantillas listas en `deploy/nginx/` y `.env.production.example` (`SESSION_SECURE_COOKIE=true`, `SESSION_ENCRYPT=true`, `APP_DEBUG=false`) |
 
 ---
 
