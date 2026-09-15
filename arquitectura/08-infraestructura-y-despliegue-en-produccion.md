@@ -106,6 +106,7 @@ Validado en local con Docker:
 - `docker compose config` del archivo de producción;
 - `nginx -t` con un certificado de prueba;
 - construcción de la imagen.
+- la imagen contra un MySQL 8.0.46 en contenedor: todas las migraciones corren y `backup:run --only-db` genera un volcado con todas las tablas. El `mysqldump` de la imagen es el cliente de MariaDB 10.11 (`default-mysql-client` de Debian) y es compatible.
 
 ⚠️ **Cada despliegue reinicia `app`, `queue`, `scheduler` y `reverb`.** Con OPcache sin revalidar y la cola cargando el código al arrancar, no reiniciar deja la versión anterior corriendo sin ningún error visible.
 
