@@ -83,5 +83,31 @@ Sin los headers `Upgrade` y `Connection`, el handshake WebSocket falla con un 40
 - **Queue workers + Supervisor:** ya tienes experiencia directa con esto (Reverb/queue:work); mismo patrón aquí para `queue:work` de emails, webhooks de pago y recálculo del calendario de precios.
 - **Proceso Reverb bajo Supervisor:** `autorestart=true`, `numprocs=1`. Si el proceso muere, el chat deja de entregar en vivo (aunque los mensajes se siguen guardando por HTTP) — conviene una alerta sobre ese proceso, no solo sobre el contenedor de la app.
 
+
+### 8.5 Plantillas de despliegue (fase 17)
+
+El esquema de 8.2 ya existe como archivos en `Casas_back/deploy/`, con su guía en `deploy/README.md`:
+
+| Archivo | Qué resuelve |
+|---|---|
+| `docker/php/Dockerfile` | **Una sola imagen** para app, cola, scheduler y Reverb: cambia el comando, no el código, así nunca corre la cola con otra versión que la API. Trae `mysqldump` para los respaldos |
+| `docker/php/php.ini` | OPcache con `validate_timestamps=0` y sin `expose_php` |
+| `docker-compose.prod.yml` | Seis servicios con `name: casas`. MySQL y Redis **sin puertos publicados** |
+| `nginx/api.conf`, `nginx/ws.conf` | TLS, redirección 301 y el proxy de Reverb con los timeouts de 8.3. Un solo certificado para `api.` y `ws.` |
+| `supervisor/casas.conf` | La alternativa sin Docker |
+| `.env.production.example` | Todas las variables de producción |
+
+Diferencias con el boceto de 8.2:
+- El frontend no va en el compose; va en Vercel (8.1).
+- Nginx no monta el código: todo lo pasa a php-fpm.
+- El **primer certificado** se emite con certbot `--standalone`, antes de levantar Nginx, porque sin los `.pem` Nginx no arranca. Las renovaciones van por webroot.
+
+Validado en local con Docker:
+- `docker compose config` del archivo de producción;
+- `nginx -t` con un certificado de prueba;
+- construcción de la imagen.
+
+⚠️ **Cada despliegue reinicia `app`, `queue`, `scheduler` y `reverb`.** Con OPcache sin revalidar y la cola cargando el código al arrancar, no reiniciar deja la versión anterior corriendo sin ningún error visible.
+
 ---
 

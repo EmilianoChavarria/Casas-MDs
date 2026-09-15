@@ -76,5 +76,16 @@ jobs:
 
 A diferencia de tu pipeline actual por FTP (cPanel shared hosting), aquí al tener VPS con acceso SSH puedes hacer deploy por `git pull` + `artisan migrate`, mucho más robusto que sincronizar archivos por FTP.
 
+**Hoy (15-sep-2026), en cada PR a `main` o `develop`:**
+
+| Repo | Pasos | Bloquea el merge si… |
+|---|---|---|
+| `Casas_back` | Pint · `composer audit` · migraciones · PHPUnit contra MySQL 8 | hay formato pendiente, una dependencia con vulnerabilidad conocida o una prueba roja |
+| `Casas_front` | `tsc --noEmit` · ESLint · `next build` | hay error de tipos o de lint, o el build falla |
+
+- El build del front corre **sin backend** (`NEXT_PUBLIC_API_URL` apunta a un puerto cerrado): comprueba que ninguna página dependa de la API al compilar.
+- ⚠️ Tres reglas del React Compiler (`set-state-in-effect`, `immutability`, `purity`) van en **aviso** hasta migrar las cargas con `useEffect` a react-query (`Casas_front#48`). Todo lo demás es error.
+- El deploy automático por SSH de arriba sigue pendiente: necesita el VPS. Mientras tanto, el despliegue es el de `deploy/README.md`.
+
 ---
 

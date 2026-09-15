@@ -67,11 +67,6 @@ DB_PASSWORD=<generado seguro, guardado en GitHub Secrets>
 - Usuario de aplicación (`rentas_app`) con permisos limitados a la BD específica (nunca usar `root` desde Laravel).
 - Charset `utf8mb4` y collation `utf8mb4_unicode_ci` (soporte completo de emojis/acentos).
 - Activar `innodb_buffer_pool_size` ajustado a ~70% de la RAM disponible si es self-hosted.
-- Backups automáticos diarios vía `mysqldump` programado + subida a Cloudflare R2 (ver `04-almacenamiento-r2.md`):
-
-```bash
-# Cron diario (en el VPS)
-0 3 * * * docker exec mysql_container mysqldump -u root -p$MYSQL_ROOT_PASSWORD rentas | gzip > /backups/rentas_$(date +\%F).sql.gz
-```
+- Backups automáticos diarios: ✅ con `spatie/laravel-backup` desde el scheduler de Laravel, no con un cron suelto (arquitectura/07). `mysqldump` con `--single-transaction` y gzip; destino un bucket de R2 aparte más una copia local; aviso por correo si falla o si el último tiene más de un día. En Windows, `DB_DUMP_BINARY_PATH` apunta a la carpeta de `mysqldump.exe`, que debe ser de la misma versión que el servidor. Restauración: `deploy/README.md`.
 
 Referenciado desde: `../arquitectura/`, secciones 1, 5 y 8.

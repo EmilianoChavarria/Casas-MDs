@@ -14,12 +14,12 @@
 | 9 | Autenticación: panel admin + **huéspedes con Google OAuth** (secciones 5.6 y 7.1.1) |
 | 10 | Motor de reservas (anti doble-booking, estados, congelado de precios) |
 | 11 | **Promociones y cupones** (canje con lock, reportes de descuento) |
-| 12 | Pagos (Stripe/MP + webhooks, enrutado por moneda) |
+| 12 | Pagos (Stripe + webhooks, enrutado por moneda). Mercado Pago descartado ([`servicios/06`](../servicios/06-pagos-mercadopago.md)) |
 | 13 | Dashboard admin completo + reportes |
 | 14 | **Chat en tiempo real (Reverb, canales, bandeja admin, notificaciones)** (sección 16) |
 | 15 | **Experiencias / tours guiados: salidas, guías, panel del guía, reseñas** (sección 20) |
-| 16 | Hardening de seguridad + backups |
-| 17 | Producción, monitoreo (Sentry), lanzamiento |
+| 16 | Hardening de seguridad + backups — ✅ 15-sep-2026 |
+| 17 | Producción, monitoreo (Sentry), lanzamiento — 🟡 código listo; falta contratar y desplegar |
 
 **Por qué en ese orden:**
 
@@ -32,6 +32,20 @@
 - Las **experiencias van en la fase 15**, después de reservas, pagos y dashboard: reutilizan el motor de pagos, `customers` y el sistema de diseño, así que construirlas antes obligaría a rehacer esas piezas. **Con una excepción que sí es de la fase 2:** `payments` debe nacer **polimórfico** aunque el módulo se construya al final (sección 20.7). Convertirla después, con dinero real y webhooks en producción, es la parte cara.
 
 **Fases desbloqueadas (respuestas del 25-ago-2026):** las fases 5, 6, 8, 9 y 15 ya tienen sus decisiones cerradas — **D1** a **D7**, **D9**, **D11** y **D12**. Ver el resumen de respuestas en [`dudas-cliente.md`](../dudas-cliente.md).
+
+**Fases 16 y 17 (15-sep-2026).** Todo lo que se puede construir y probar sin contratar nada ya está hecho:
+- **Respaldos:** diarios, probados en local.
+- **Seguridad:** encabezados en la API y en el sitio; auditoría de dependencias en el CI.
+- **Sentry:** en backend y frontend, apagado mientras no haya DSN.
+- **CI del frontend.**
+- **Despliegue:** plantillas en `Casas_back/deploy/`, validadas con Docker.
+
+Lo que falta ya no es código:
+- el VPS, el dominio y los certificados;
+- Resend, Stripe live, el bucket de respaldos y el proyecto de Sentry;
+- los textos legales (D8).
+
+Ver `deploy/README.md` en el backend.
 
 **Lo que sigue bloqueado:** la fase 17 sigue bloqueada por **D8** (textos legales, en preparación con un abogado), que impide activar cobros reales y publicar la app de Google. Ninguno de los dos frena el desarrollo: frenan la salida a producción.
 

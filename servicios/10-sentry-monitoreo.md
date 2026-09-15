@@ -50,16 +50,24 @@ Sin esto, los errores en producción solo se detectan si un usuario los reporta 
 
 ### Variables de entorno
 
+✅ **Integrado (fase 17, 15-sep-2026).** `sentry/sentry-laravel` en el backend (`Integration::handles` en `bootstrap/app.php`) y `@sentry/nextjs` en el frontend: `instrumentation.ts`, `instrumentation-client.ts`, `global-error.tsx` y `withSentryConfig`. **Sin DSN no envía nada**, así que en local y en CI queda apagado sin tocar código. `sendDefaultPii` va en `false` en los dos: IP, cookies y cabeceras no viajan a Sentry.
+
 **Backend (`.env`)**
 ```
 SENTRY_LARAVEL_DSN=https://xxxx@oXXXX.ingest.sentry.io/XXXX
+SENTRY_ENVIRONMENT=production
 SENTRY_TRACES_SAMPLE_RATE=0.2
 ```
 
-**Frontend (`.env.local`)**
+**Frontend (variables del proyecto en Vercel)**
 ```
-NEXT_PUBLIC_SENTRY_DSN=https://xxxx@oXXXX.ingest.sentry.io/YYYY
-SENTRY_AUTH_TOKEN=<token para subir source maps en el build de CI/CD>
+NEXT_PUBLIC_SENTRY_DSN=https://xxxx@oXXXX.ingest.sentry.io/YYYY   # navegador
+SENTRY_DSN=https://xxxx@oXXXX.ingest.sentry.io/YYYY               # servidor de Next (opcional: si falta, usa el público)
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
+SENTRY_ORG=<organización>
+SENTRY_PROJECT=<proyecto>
+SENTRY_AUTH_TOKEN=<token para subir source maps en el build>
 ```
 
 ### Alertas recomendadas (Sentry → Alerts → Create Alert Rule)
@@ -68,13 +76,6 @@ SENTRY_AUTH_TOKEN=<token para subir source maps en el build de CI/CD>
 - Configurar un canal de Slack o correo del equipo como destino de las alertas.
 
 ### Integración con el pipeline de CI/CD
-Subir source maps automáticamente en el deploy del frontend para que los stack traces en Sentry muestren código legible en vez de minificado:
-```yaml
-# En el workflow de GitHub Actions del frontend, tras el build
-- name: Upload source maps to Sentry
-  run: npx sentry-cli releases files "${{ github.sha }}" upload-sourcemaps ./.next
-  env:
-    SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-```
+Los source maps los sube `withSentryConfig` **durante el build** cuando existe `SENTRY_AUTH_TOKEN`, sin paso extra de `sentry-cli`. Sin el token, que es el caso del CI de PRs y de local, el build no intenta subir nada ni falla. Basta con definir `SENTRY_ORG`, `SENTRY_PROJECT` y `SENTRY_AUTH_TOKEN` en el entorno de build de producción.
 
 Referenciado desde: `../arquitectura/`, secciones 7 y 10.
