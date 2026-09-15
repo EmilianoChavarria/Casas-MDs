@@ -640,23 +640,27 @@ El módulo entra como **fase 15 del roadmap** (sección 12), después del dashbo
 
 ## 20.14 Checklist de verificación antes de publicar
 
-- [ ] Reservar dos veces la última plaza en paralelo → una falla con mensaje claro, `seats_taken` correcto.
-- [ ] `experiences:reconcile-seats` no reporta discrepancias tras 100 reservas simuladas.
-- [ ] Reducir el cupo por debajo de los reservados → rechazado con explicación.
-- [ ] Un guía autenticado no ve, ni llamando a la API directamente, salidas de otro guía.
-- [ ] Un guía no ve totales ni métodos de pago en el roster.
-- [ ] Salida bajo el mínimo → se cancela sola, reembolsa el 100% y avisa a todos.
-- [ ] Mínimo 4 con 3 pagados y 1 apartado sin pagar → **no** se confirma.
-- [ ] El pago que completa el mínimo, con guía asignado, confirma la salida al momento y avisa al guía una sola vez.
-- [ ] Salida privada → no aparece en el listado ni en la ficha; abre solo por su liga.
-- [ ] Ningún recurso público devuelve las cosas necesarias para el guía.
-- [ ] Finalizar desde el panel del guía enseña un QR que abre `/r/{token}`.
-- [ ] Token de reseña caducado y token con cupo agotado → ambos rechazados.
-- [ ] Reseña sin consentimiento → guardada, no visible en público.
-- [ ] Experiencia con 0 reseñas → no pinta "0.0 ★".
-- [ ] Notas de asistentes cifradas en la BD (verificado con `SELECT` directo).
-- [ ] `/r/{token}` responde `noindex`.
-- [ ] Baja de guía con salidas futuras → bloqueada.
-- [ ] El total de la experiencia lleva IVA y **no** lleva ISH ni DSA (según D10).
+Revisado el 15-sep-2026 contra `Casas_back` y `Casas_front` en `main`. Cada punto dice **qué lo demuestra**: una prueba automática (corre en cada CI) o una verificación hecha a mano. Una casilla sin evidencia no cuenta.
+
+- [x] **Reservar dos veces la última plaza en paralelo → una falla con mensaje claro, `seats_taken` correcto.** Procesos reales en paralelo: `ConcurrentSeatBookingTest` (última plaza, ocho compradores sobre cuatro plazas, contador tras la pelea). El 409 con mensaje: `ExperienceSaleTest::test_reservar_mas_plazas_de_las_que_quedan_devuelve_409`.
+- [x] **`experiences:reconcile-seats` no reporta discrepancias tras 100 reservas simuladas.** `DepartureEngineTest::test_cien_reservas_con_pagos_cancelaciones_y_vencimientos_no_desincronizan_el_contador`: 100 reservas intercalando pagos, cancelaciones y vencimientos; el comando en `--dry-run` sale con 0.
+- [x] **Reducir el cupo por debajo de los reservados → rechazado con explicación.** `DepartureEngineTest::test_no_se_puede_bajar_el_cupo_por_debajo_de_lo_reservado` y `AdminDepartureTest::test_no_se_baja_el_cupo_por_debajo_de_lo_reservado`.
+- [x] **Un guía autenticado no ve, ni llamando a la API directamente, salidas de otro guía.** `GuidePanelTest::test_cada_guia_ve_solo_sus_salidas` y `test_el_detalle_de_la_salida_de_otro_guia_da_404`.
+- [x] **Un guía no ve totales ni métodos de pago en el roster.** Panel: `GuidePanelTest::test_el_detalle_trae_asistentes_pagado_notas_y_lo_que_debe_llevar` (sin `total_price`, sin `payment_method`, sin el importe ni el correo del cliente). Correo G2: `GuideAssignmentNoticeTest::test_el_guia_recibe_la_lista_24_h_antes_una_sola_vez_y_sin_datos_de_pago_ni_contacto`.
+- [x] **Salida bajo el mínimo → se cancela sola, reembolsa el 100% y avisa a todos.** `DepartureEngineTest::test_una_salida_bajo_el_minimo_se_cancela_sola_con_motivo` y `ExperienceNotificationTest::test_el_job_del_minimo_cancela_reembolsa_y_avisa_de_una_pasada`.
+- [x] **Mínimo 4 con 3 pagados y 1 apartado sin pagar → no se confirma.** `GuideDepartureNoticeTest::test_los_lugares_apartados_sin_pagar_no_confirman_la_salida` y `test_en_el_corte_solo_cuentan_los_lugares_pagados`.
+- [x] **El pago que completa el mínimo, con guía asignado, confirma la salida al momento y avisa al guía una sola vez.** `GuideDepartureNoticeTest::test_la_salida_se_confirma_y_avisa_al_guia_en_cuanto_los_pagos_llegan_al_minimo` y `test_el_guia_recibe_el_aviso_una_sola_vez`.
+- [x] **Salida privada → no aparece en el listado ni en la ficha; abre solo por su liga.** `ExperiencePrivateTest` (`no_aparece_en_el_listado_ni_en_la_ficha`, `la_liga_privada_muestra_solo_esa_salida`, `un_token_equivocado_no_revela_nada`, `no_se_cotiza_ni_reserva_sin_su_token`).
+- [x] **Ningún recurso público devuelve las cosas necesarias para el guía.** `ExperienceGuideGearTest::test_lo_que_lleva_el_guia_no_sale_en_la_ficha_publica`. Revisado en código: `guide_gear` solo aparece en `ExperienceAdminResource` y en el controlador del panel del guía; ningún recurso público lo referencia.
+- [x] **Finalizar desde el panel del guía enseña un QR que abre `/r/{token}`.** API: `GuidePanelTest::test_finalizar_da_el_link_del_qr_solo_si_la_salida_ya_empezo`. Front: `guia/salidas/[id]` pinta el QR con `qrcode.react` desde `review_url`, además de copiar y compartir la liga.
+- [x] **Token de reseña caducado y token con cupo agotado → ambos rechazados.** `ExperienceReviewCaptureTest::test_un_token_inexistente_o_vencido_da_404_sin_distinguir` y `test_no_entran_mas_resenas_que_lugares_pagados`.
+- [x] **Reseña sin consentimiento → guardada, no visible en público.** `ExperienceReviewCaptureTest::test_sin_consentimiento_la_resena_cuenta_pero_su_texto_no_se_publica` (enviada por el link sin la casilla) y `ExperiencePublicBookingTest::test_las_resenas_publicas_solo_ensenan_las_visibles`.
+- [x] **Experiencia con 0 reseñas → no pinta "0.0 ★".** API: `ExperienceSaleTest::test_una_experiencia_sin_resenas_no_devuelve_calificacion` y `ExperienceSchemaTest::test_una_experiencia_sin_resenas_no_tiene_calificacion`. Front: `ExperienceCard` y `ExperienceDetail` solo pintan la calificación con `rating !== null`.
+- [x] **Notas de asistentes cifradas en la BD (verificado con `SELECT` directo).** `ExperienceSchemaTest::test_las_notas_de_asistentes_quedan_cifradas_en_la_base` lee la columna con `DB::table`, sin Eloquent, y comprueba que el texto no aparece; `test_las_notas_no_salen_al_serializar`.
+- [x] **`/r/{token}` responde `noindex`.** Verificado a mano: el HTML servido lleva `<meta name="robots" content="noindex, nofollow"/>` (`r/[token]/layout.tsx`).
+- [x] **Baja de guía con salidas futuras → bloqueada.** `AdminGuideTest::test_no_se_da_de_baja_a_quien_tiene_salidas_proximas` y `ExperienceSchemaTest::test_un_guia_con_salidas_futuras_no_se_puede_dar_de_baja`.
+- [x] **El total de la experiencia lleva IVA y no lleva ISH ni DSA (según D10).** `ExperienceSaleTest::test_una_experiencia_lleva_iva_pero_no_ish_ni_dsa`.
+
+**Pendiente fuera de este checklist:** probarlo contra el entorno de producción (cola, scheduler y webhook reales, sección 9.2.1). Las pruebas demuestran la regla; no que el worker esté corriendo.
 
 ---
