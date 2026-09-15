@@ -107,6 +107,36 @@ Schedule::job(new SendScheduledBookingNotifications)->dailyAt('09:00');
 
 ---
 
+### 19.7 Diseño de los correos
+
+Todas las plantillas son Markdown de Laravel (`@component('mail::message')`), así que el aspecto vive en **un tema**, no en cada correo: `resources/views/vendor/mail/html/themes/casa-caribe.css`, activado con `mail.markdown.theme`.
+
+- **Paleta del frontend** (sección 17): fondo gris `sand-50`, tarjeta blanca con borde `sand-200`, radio 18 px y sombra suave; barra superior `lagoon-500`; resumen de la reserva en panel `mist` con borde lagoon.
+- **Tipografía:** títulos en Poppins y texto en Inter, cargadas desde Google Fonts. Apple Mail, iOS y Outlook para Mac las muestran; **Gmail y Outlook de escritorio no cargan fuentes web** y usan la pila de respaldo (Segoe UI / Helvetica). El diseño tiene que verse bien con la de respaldo.
+- **Botones:** **coral** para la acción del huésped (el mismo criterio que el sitio: coral solo para lo que vende) y **lagoon** (`'color' => 'lagoon'`) para los correos del equipo y de los guías, como el primario del panel.
+- **Marca:** encabezado con la "C" y el nombre, pie traducido y firma "El equipo de Casa Caribe". El nombre sale de `mail.brand` (`MAIL_BRAND`), **no de `APP_NAME`**, que nombra a la API y acababa impreso en cada correo como "Casas API".
+- ⚠️ El CSS del tema se inyecta en línea al renderizar. Lo que tiene que quedar como hoja de estilos (las media queries del móvil) va en el `<style>` del layout, no en el tema.
+
+**Correo para crear contraseña.** Lo comparten "olvidé mi contraseña" y las invitaciones del personal, guías y co-anfitriones (D6). El del framework salía en inglés y firmado "Casas API"; ahora se arma con `ResetPassword::toMailUsing` y textos propios en `lang/{es,en,fr}/mail.php`:
+
+- Si la cuenta tiene una invitación pendiente (`invited_at` y sin contraseña), dice "Te invitaron a Casa Caribe". A quien nunca tuvo cuenta no se le dice que "pidió cambiar su contraseña".
+- ⚠️ Con `toMailUsing`, Laravel **ya no aplica `createUrlUsing`**: la liga a `/establecer-contrasena` se arma dentro con la misma función. Si se toca una, se toca la otra.
+- `User` implementa `HasLocalePreference`: toda notificación a una cuenta sale en su `users.locale`, no en el idioma de la petición.
+
+### 19.8 ⚠️ Colas: nada `readonly` en las clases base
+
+Todas las notificaciones van por cola. Al sacar el job, `SerializesModels` vuelve a asignar las propiedades desde la clase **hija**, y PHP no permite inicializar una propiedad `readonly` desde fuera de la clase que la declara:
+
+```
+Cannot initialize readonly property App\Notifications\BookingNotification::$booking
+from scope App\Notifications\BookingConfirmed
+```
+
+Pasó entre el 28-ago y el 15-sep-2026: `BookingNotification`, `ExperienceNotification` y `GuideNotification` declaraban `public readonly` en el constructor, y **ningún correo de reserva, de experiencia ni al guía salió del worker**. Las pruebas no lo vieron porque `Notification::fake()` no serializa nada.
+
+**Regla:** en una clase base de notificación o job encolado, propiedades promovidas sin `readonly`. `QueuedNotificationSerializationTest` pasa un correo de cada base por `serialize`/`unserialize`, lo mismo que hace el worker; una base nueva se agrega ahí.
+
+---
 Ver también: [`servicios/07-correo-transaccional.md`](../servicios/07-correo-transaccional.md), secciones 5.4 (reseñas), 5.5 (expiración) y 16 (avisos del chat).
 
 ---

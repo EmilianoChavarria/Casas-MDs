@@ -49,13 +49,47 @@ Envío de correos transaccionales: confirmación de reserva, cancelación, recor
 ## Configuración
 
 
+### Paquete
+
+El transporte `resend` de Laravel necesita el SDK, que no viene instalado:
+
+```bash
+composer require resend/resend-php
+```
+
 ### Variables de entorno (`.env`, con Resend)
 ```
 MAIL_MAILER=resend
-RESEND_KEY=re_xxxxxxxxxxxx
+RESEND_API_KEY=re_xxxxxxxxxxxx
 MAIL_FROM_ADDRESS=reservas@midominio.com
-MAIL_FROM_NAME="Renta Casas"
+MAIL_FROM_NAME="Casa Caribe"
+MAIL_BRAND="Casa Caribe"
 ```
+
+⚠️ **Es `RESEND_API_KEY`, no `RESEND_KEY`.** Es la que lee `config/services.php`; con la otra el envío falla por clave vacía.
+
+`MAIL_BRAND` es el nombre del encabezado y el pie de los correos (ver 19.7). No usar `APP_NAME` para esto: nombra a la API ("Casas API").
+
+Las notificaciones van por cola: sin `queue:work` corriendo **no sale ningún correo**, aunque la configuración esté bien. Tras cambiar el `.env`, `php artisan config:clear` y `php artisan queue:restart`.
+
+### Desarrollo local sin dominio
+
+Sin dominio verificado, Resend **solo entrega al correo con el que se creó la cuenta** (remitente `onboarding@resend.dev`); a cualquier otro destinatario responde 403 y el job falla. Para desarrollar se usa **Mailpit**, que atrapa todo lo que sale y lo enseña en el navegador sin mandarlo a nadie:
+
+1. Descargar `mailpit-windows-amd64.zip` de https://github.com/axllent/mailpit/releases y ejecutar `mailpit.exe` (SMTP en `1025`, bandeja en http://localhost:8025).
+2. En el `.env`:
+   ```
+   MAIL_MAILER=smtp
+   MAIL_HOST=127.0.0.1
+   MAIL_PORT=1025
+   MAIL_USERNAME=null
+   MAIL_PASSWORD=null
+   ```
+3. `php artisan config:clear` y `php artisan queue:restart`.
+
+⚠️ **Una sola instancia de Mailpit.** Con dos abiertas, Laravel entrega a la que escucha en `127.0.0.1` y el navegador (`localhost` → `::1`) puede abrir la otra, vacía: parece que los correos no llegan.
+
+Gmail con contraseña de aplicación también sirve para mandar a correos reales en pruebas, pero no para producción: cae en spam y Google bloquea envíos en volumen.
 
 ### Registros DNS requeridos (agregar en Cloudflare)
 ```
