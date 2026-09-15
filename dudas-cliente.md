@@ -20,6 +20,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
 | D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
+| D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 
 ---
 
@@ -828,6 +829,54 @@ Sobre el ejemplo anterior cancelado con un 50% de retención según la política
 Lo que bloquea es la **primera liquidación real a un co-anfitrión**. Por el congelado que se explica arriba, conviene responder **antes de dar de alta al primer dueño**: después, esas reservas ya no se pueden recalcular sin reescribir su histórico.
 
 La pregunta 2 bloquea, además, lo que diga el **contrato con el co-anfitrión** sobre cancelaciones, que debería decir lo mismo que hace el sistema.
+
+---
+
+## D15 — ¿Habrá chat en las experiencias, y con quién?
+
+**Estado:** ⏳ Pendiente · Relacionada con **D9** (panel del guía)
+
+### Contexto
+
+El sitio ya tiene mensajería entre el cliente y la **administración**:
+
+- desde la **ficha de cada casa** ("Pregúntale al anfitrión"), con o sin cuenta;
+- desde el **detalle de una reserva**, y el equipo ve en la conversación si el cliente escribe desde una reserva o si todavía no tiene ninguna;
+- desde la **solicitud de salida privada**: la solicitud abre una conversación con el administrador, y ahí mismo le llega al cliente la liga de pago.
+
+Para las experiencias **normales** (salidas públicas) no hay botón de mensaje: el cliente reserva y paga, recibe sus correos, y el día de la salida se encuentra con el guía. El guía tiene su propio panel (sus salidas, la lista de personas, el QR de reseñas), pero **no tiene mensajes**.
+
+### Las preguntas concretas
+
+> **1.** ¿Las experiencias deben tener chat, o basta con los correos y con la solicitud privada que ya existe?
+>
+> **2.** Si hay chat, ¿el cliente le escribe **directo al guía** o **al administrador**?
+>
+> **3.** Si es con el guía: ¿el administrador debe poder leer esas conversaciones? ¿Desde cuándo puede escribir el cliente (antes de reservar, o solo con la salida ya pagada)? ¿Y qué pasa cuando cambia el guía de una salida?
+
+### Opciones
+
+| Opción | Cómo funciona | Trabajo aproximado |
+|---|---|---|
+| **A. Sin chat en experiencias** | Como hoy: dudas por la solicitud privada o por una conversación general con el equipo | 0 h |
+| **B. Chat con el administrador** *(recomendada para empezar)* | Botón "Preguntar" en la ficha y en la reserva de la experiencia; llega a la misma bandeja de Mensajes, con la salida y la reserva a la vista | ~6–10 h: la base ya existe, es lo mismo que se hizo con las casas |
+| **C. Chat directo con el guía** | El guía recibe mensajes en su panel, solo de clientes de sus salidas | ~20–30 h: bandeja en el panel del guía, reglas de acceso, avisos y reasignación al cambiar de guía |
+| **D. Mixto** | Antes de reservar, el administrador; con la salida confirmada, el guía se suma a la conversación | ~25–35 h |
+
+### ⚠️ Lo que conviene pensar antes de elegir C o D
+
+- **Desintermediación.** Con chat directo, el guía y el cliente pueden acordar la siguiente salida por fuera del sitio. Es el mismo riesgo que llevó a no enseñarle al co-anfitrión el correo ni el teléfono de los huéspedes (sección 5.13).
+- **Datos personales.** El guía hoy ve nombre, número de personas y notas operativas, nunca el correo ni el teléfono del cliente. Un chat directo tiene que respetar lo mismo, y alguien tiene que revisar lo que se comparte.
+- **Tiempo de respuesta e idioma.** El administrador atiende una bandeja; un guía está en el mar varias horas y quizá no habla el idioma del cliente. Un mensaje sin respuesta de un día para otro se lee peor que no tener chat.
+- **Supervisión.** Si hay una queja, el administrador necesita poder leer lo que se dijo.
+
+**Recomendación:** empezar con **B** y medir cuántos mensajes llegan. Si muchos son preguntas operativas que solo el guía sabe responder, pasar a **D**, donde el administrador sigue viendo la conversación.
+
+### Qué se bloquea mientras no se responda
+
+**Nada del lanzamiento.** Las experiencias funcionan sin chat, y la solicitud privada ya conversa con el administrador.
+
+Lo que se decide aquí es si el **panel del guía** crece con una bandeja de mensajes (C y D) y qué se le dice al cliente en la ficha de la experiencia.
 
 ---
 

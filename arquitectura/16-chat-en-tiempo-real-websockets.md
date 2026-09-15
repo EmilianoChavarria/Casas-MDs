@@ -7,7 +7,10 @@ Mensajería directa entre el **huésped** (o visitante interesado) y el **admini
 ### 16.1 Alcance
 
 **Sí incluye:**
-- Chat 1-a-1 huésped ↔ administración, opcionalmente anclado a una propiedad o a una reserva.
+- Chat 1-a-1 huésped ↔ administración, opcionalmente anclado a una propiedad, una reserva, una experiencia o una **solicitud de salida privada** (20.5.1: la solicitud abre la conversación).
+- **Puntos de entrada construidos:** "Pregúntale al anfitrión" en la ficha de cada casa (con o sin cuenta), "Escribir sobre esta reserva" en el detalle de la reserva del huésped, la solicitud de salida privada y "Mis mensajes". Con sesión, escribir otra vez sobre la misma casa o la misma reserva **continúa** la conversación abierta; sin sesión nunca se reutiliza (bastaría con escribir el correo de otra persona para entrar a su hilo).
+- En la bandeja, el equipo ve **si el cliente escribe desde una reserva** (código, fechas, huéspedes, estado) o si no, y cuántas reservas tiene (en esa casa y en total).
+- Chat de experiencias con el guía: **no incluido**, pendiente de **D15**.
 - Entrega en tiempo real, indicador de "escribiendo…", acuse de lectura, contador de no leídos.
 - Historial persistente y consultable desde el dashboard admin.
 - Adjuntar imágenes (ej. comprobante de pago, foto de un desperfecto).
@@ -75,11 +78,15 @@ conversations (
   customer_id       FK              -- huésped
   property_id       FK NULL         -- si la conversación nace desde una propiedad
   booking_id        FK NULL         -- si nace desde una reserva
+  experience_id     FK NULL         -- si nace desde una experiencia
+  private_request_id FK NULL UNIQUE -- la solicitud de salida privada que la abrió (20.5.1)
   assigned_user_id  FK NULL         -- admin que la atiende
   status            ENUM(open, pending, closed) DEFAULT open
   subject           VARCHAR NULL
   last_message_at   DATETIME        -- desnormalizado, para ordenar la bandeja
-  guest_token       CHAR(36) NULL   -- acceso de visitante sin cuenta
+  locale            CHAR(2)         -- idioma de los avisos y correos al cliente
+  guest_token_hash  CHAR(64) NULL UNIQUE -- acceso de visitante: se busca por hash
+  guest_token       TEXT NULL       -- el mismo token cifrado (APP_KEY), para reenviar la liga por correo
   ...auditoría
 )
 
@@ -108,7 +115,9 @@ messages (
 
 **Contador de no leídos:** se calcula con `COUNT(*) WHERE read_at IS NULL AND sender_type != <quien pregunta>` y se cachea en Redis por conversación, invalidando en cada `send` y `markAsRead`. No se guarda como columna en `conversations` — se desincroniza en cuanto haya concurrencia.
 
-**Visitante sin cuenta:** un interesado que aún no reserva no tiene `users.id`. Se crea un `customer` mínimo (nombre + email) y la conversación lleva un `guest_token` UUID que el frontend guarda en cookie httpOnly. Ese token autoriza el canal privado. Al registrarse o reservar, la conversación se vincula al `customer_id` definitivo y el token se anula.
+**Visitante sin cuenta:** un interesado que aún no reserva no tiene `users.id`. Se resuelve su `customer` por correo (misma regla que las reservas, 5.6) y la conversación lleva un token aleatorio de 40 caracteres que viaja **en la liga** `/mensajes/t/{token}`: se le enseña al enviar la solicitud y se le manda por correo.
+
+✅ **Cambio respecto al diseño original (15-sep-2026):** el token **no autoriza un canal privado** ni vive en cookie. Autorizar un canal sin sesión obligaba a un segundo mecanismo de autenticación en `/broadcasting/auth`, y un canal público con el token en el nombre lo filtraría. El visitante **consulta por HTTP cada 5 s** (`after_id`); quien tiene cuenta usa WebSocket. En la base se guarda el **hash** para buscar y una copia **cifrada** para reenviar la liga en el correo de "mensaje sin leer". La página de la liga va con `noindex` y `referrer: no-referrer`.
 
 ---
 
@@ -137,6 +146,19 @@ Broadcast::channel('admin.inbox', fn ($user) => $user->isAdmin());
 Se usa **presence channel** (`presence-conversation.{id}`) y no `private`, porque el estado de presencia es justo lo que permite decidir si mandar el correo de "tienes un mensaje sin leer" y mostrar "en línea".
 
 La autorización pasa por `/broadcasting/auth`, protegido por Sanctum — la misma sesión que el resto del dashboard. **Nunca** un canal público: los canales públicos son legibles por cualquiera que adivine el ID.
+
+✅ **Cómo quedó construido (15-sep-2026):**
+
+| Diseño | Construido | Por qué |
+|---|---|---|
+| `presence-conversation.{id}` | `private-conversation.{id}` | La presencia solo servía para decidir el correo de no leído y el "en línea". El correo se resolvió con un job con retraso que mira `read_at` (ver abajo); presencia e "escribiendo…" quedan pendientes |
+| `admin.inbox` | `staff.inbox` | Lo atienden administradores **y personal**. Los guías no: `isStaff()` los excluye |
+| `/broadcasting/auth` | `/api/broadcasting/auth` con `auth:sanctum` | Bajo `/api` lo cubre el CORS de la API y usa la cookie del SPA, sin token en JavaScript |
+| `MessageRead` con `message_ids[]` | `MessagesRead` con `reader` | Se marca leído todo lo que le llegó a un lado; el otro pinta la doble palomita |
+
+**Correo de "mensaje sin leer":** cada mensaje encola `NotifyUnreadMessage` con 2 minutos de retraso. Si al correr ya está leído, no hace nada. Para no mandar un correo por mensaje, `notification_log` reclama una ventana de 30 minutos por conversación y por lado.
+
+**Eventos:** `MessageSent` es `ShouldBroadcast` (encolado) y `ShouldDispatchAfterCommit`: si Reverb no responde, el envío HTTP del mensaje no falla.
 
 **Eventos:**
 
@@ -188,6 +210,8 @@ export const echo = new Echo({
   withCredentials: true,   // cookie de Sanctum
 });
 ```
+
+✅ **Cómo quedó construido (15-sep-2026):** en vez de widget flotante, el cliente tiene **Mis mensajes** (`/mensajes`, `/mensajes/{id}`, `/mensajes/t/{token}`) y el equipo una bandeja en `/dashboard/messages`. Un solo componente de hilo (`components/chat/ChatThread.tsx` + `hooks/useChatThread.ts`) sirve a los tres, contra una interfaz `ChatEndpoint` que abstrae si habla con `/me`, con la liga o con `/admin`. `lib/echo.ts` es el singleton de Echo y autoriza canales con `fetch` + cookie de sesión. El widget flotante, "escribiendo…" y el contador global de no leídos quedan pendientes.
 
 **Puntos de cuidado en React:**
 - El chat es **siempre Client Component**. Nada de WebSockets en Server Components.
@@ -319,7 +343,7 @@ Conviene además mostrar el estado de conexión en la UI (un indicador discreto 
 | Spam / flood | `throttle:30,1` en `POST /messages`; `body` máx. 2,000 caracteres |
 | Adjuntos maliciosos | Mismo pipeline de imágenes de la sección 7: `mimes:jpg,png,webp,pdf`, `max:5120`, reprocesado antes de subir a R2, URL firmada con expiración |
 | Fuga de datos personales | No permitir que el chat cambie estados de reserva ni pagos; es solo mensajería |
-| `guest_token` filtrado | UUID v4, cookie `httpOnly` + `Secure` + `SameSite=Lax`, expira a los 30 días, se invalida al vincular la cuenta |
+| Liga de visitante filtrada | Token aleatorio de 40 caracteres, buscado por hash; token equivocado = 404 igual que inexistente; `throttle` en lectura y escritura; página `noindex` + `no-referrer`. ⚠️ Quien tenga la liga lee la conversación: por eso solo va al correo del cliente y a la pantalla de quien envió la solicitud |
 
 #### 16.10.1 Retención de conversaciones — ✅ DECIDIDO: diferenciada por tipo
 
