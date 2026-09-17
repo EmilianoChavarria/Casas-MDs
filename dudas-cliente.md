@@ -21,7 +21,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
-| D16 | ¿A quién se le avisa por correo cuando entra una reserva? | ⏳ Pendiente | Avisos al administrador y al co-anfitrión |
+| D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
 
 ---
 
@@ -881,9 +881,19 @@ Lo que se decide aquí es si el **panel del guía** crece con una bandeja de men
 
 ---
 
-## D16 — ¿A quién se le avisa por correo cuando entra una reserva?
+## D16 — Cuando entra una reserva, ¿se le avisa también al co-anfitrión?
 
 **Estado:** ⏳ Pendiente · Relacionada con **D14**
+
+> ✅ **Ya aplicado (17-sep-2026): el administrador sí recibe el aviso.** Al entrar
+> una reserva —de casa o de experiencia— les llega un correo a los administradores
+> activos con la casa o el tour, las fechas, el huésped, el total y si ya está
+> pagada. En las experiencias dice además cuántos lugares pagados lleva la salida
+> y cuántos le faltan para operar. Cada administrador lo recibe **una sola vez**
+> por reserva.
+>
+> Lo que queda por decidir es **si ese aviso llega también al co-anfitrión** cuando
+> la casa es suya.
 
 ### Contexto
 
@@ -897,21 +907,21 @@ El sistema sí manda correos al negocio en otros casos, así que la pieza existe
 | Un cliente escribe por el chat y nadie contesta en 2 minutos | A los administradores |
 | Se asigna una salida a un guía | Al guía |
 | Una salida se confirma o se cancela | Al guía |
-| **Entra una reserva de casa** | **A nadie** |
-| **Entra una reserva de experiencia** | **A nadie** |
+| Entra una reserva de casa | A los administradores ✅ *(17-sep-2026)* |
+| Entra una reserva de experiencia | A los administradores ✅ *(17-sep-2026)* |
+| **Entra una reserva de la casa de un co-anfitrión** | **Al administrador; al dueño, no** |
 
 El co-anfitrión (el dueño externo, 5.13) tiene su propio panel donde ve las reservas de sus casas y lo que le corresponde de cada una, pero **tampoco recibe ningún correo**: se entera solo si entra a mirar.
 
 ### La pregunta concreta
 
-> Cuando entra una reserva nueva, ¿a quién quiere que le llegue un correo?
+> Cuando entra una reserva de una casa que es de un dueño externo (co-anfitrión), ¿quiere que a él también le llegue un correo?
 >
-> 1. **A nadie, como hoy.** La reserva se ve en el panel. Sirve si alguien lo revisa varias veces al día.
-> 2. **Solo al administrador.** Un correo por cada reserva nueva, con la casa, las fechas, el huésped y el total.
-> 3. **Al administrador y, si la casa es de un co-anfitrión, también a él.**
-> 4. **Un resumen diario** en vez de un correo por reserva: "ayer entraron 3 reservas".
+> 1. **No.** Se entera entrando a su panel, donde ya ve sus reservas y lo que le corresponde. Es como está hoy.
+> 2. **Sí, por cada reserva de sus casas.** Fechas, número de personas y lo que le corresponde. Sin datos de contacto del huésped.
+> 3. **Sí, pero un resumen** (diario o semanal) con las reservas que entraron.
 
-> Y si se avisa al co-anfitrión: ¿quiere que también se le avise cuando **se cancela** una reserva de su casa?
+> Y si se le avisa: ¿también cuando **se cancela** una reserva de su casa?
 
 ### Lo que hay que saber antes de responder
 
