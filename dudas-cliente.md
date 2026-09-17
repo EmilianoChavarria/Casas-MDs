@@ -21,6 +21,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
+| D16 | ¿A quién se le avisa por correo cuando entra una reserva? | ⏳ Pendiente | Avisos al administrador y al co-anfitrión |
 
 ---
 
@@ -880,6 +881,55 @@ Lo que se decide aquí es si el **panel del guía** crece con una bandeja de men
 
 ---
 
+## D16 — ¿A quién se le avisa por correo cuando entra una reserva?
+
+**Estado:** ⏳ Pendiente · Relacionada con **D14**
+
+### Contexto
+
+Hoy, cuando alguien reserva una casa, **el correo sale solo hacia el huésped**: se le confirma su reserva, se le recuerda pagar, se le mandan las instrucciones de llegada. Del lado del negocio **no sale ningún correo**: la reserva aparece en el panel y ahí se ve, pero nadie recibe un aviso.
+
+El sistema sí manda correos al negocio en otros casos, así que la pieza existe y funciona:
+
+| Qué pasa | A quién se le avisa hoy |
+|---|---|
+| Llega una solicitud de salida privada | A todos los administradores |
+| Un cliente escribe por el chat y nadie contesta en 2 minutos | A los administradores |
+| Se asigna una salida a un guía | Al guía |
+| Una salida se confirma o se cancela | Al guía |
+| **Entra una reserva de casa** | **A nadie** |
+| **Entra una reserva de experiencia** | **A nadie** |
+
+El co-anfitrión (el dueño externo, 5.13) tiene su propio panel donde ve las reservas de sus casas y lo que le corresponde de cada una, pero **tampoco recibe ningún correo**: se entera solo si entra a mirar.
+
+### La pregunta concreta
+
+> Cuando entra una reserva nueva, ¿a quién quiere que le llegue un correo?
+>
+> 1. **A nadie, como hoy.** La reserva se ve en el panel. Sirve si alguien lo revisa varias veces al día.
+> 2. **Solo al administrador.** Un correo por cada reserva nueva, con la casa, las fechas, el huésped y el total.
+> 3. **Al administrador y, si la casa es de un co-anfitrión, también a él.**
+> 4. **Un resumen diario** en vez de un correo por reserva: "ayer entraron 3 reservas".
+
+> Y si se avisa al co-anfitrión: ¿quiere que también se le avise cuando **se cancela** una reserva de su casa?
+
+### Lo que hay que saber antes de responder
+
+**El co-anfitrión no ve los datos de contacto del huésped.** Es una regla que ya está puesta en su panel (07): ve el nombre, las fechas y el importe, pero no el correo ni el teléfono. Con ellos podría cerrar la siguiente reserva por fuera del sistema. **El correo tiene que respetar lo mismo**, así que no llevaría datos de contacto.
+
+**Cuántos correos son.** Con Resend, el plan gratuito da 3,000 correos al mes y **100 al día**. Una reserva genera hoy unos 6 correos al huésped; sumar el aviso al administrador y al co-anfitrión son 2 más por reserva. No cambia de plan, pero conviene tenerlo presente si un día hay muchas reservas el mismo día.
+
+**Ruido.** Un correo por reserva es útil cuando entran pocas. Si un día entran veinte, el aviso deja de leerse. Por eso está la opción del resumen diario.
+
+**Quién responde.** Un aviso al co-anfitrión puede hacer que el dueño llame al huésped o quiera opinar sobre la reserva. Conviene decidir si él solo se entera o si además puede hacer algo.
+
+### Qué se bloquea mientras no se responda
+
+**Nada.** El sistema opera igual: las reservas entran, se cobran y se ven en el panel.
+
+Lo que se decide es **trabajo pequeño**: una notificación nueva por destinatario, su plantilla de correo y el registro que evita mandarla dos veces, que es el mismo mecanismo que ya usan los demás avisos (19.4).
+
+---
 ## Cómo usar este documento
 
 - Cada duda es autocontenida: se puede enviar al cliente por separado sin que le falte contexto.
