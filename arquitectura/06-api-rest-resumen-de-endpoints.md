@@ -191,6 +191,8 @@ GET    /api/v1/guide/profile
 PUT    /api/v1/guide/profile                        # SOLO bio (presentación), languages, whatsapp_e164
 POST   /api/v1/guide/profile/photo
 GET    /api/v1/guide/reviews                        # sus reseñas
+POST   /api/v1/guide/departures/{id}/bookings/{code}/balance   # { paid, method } saldo cobrado en mano (20.7)
+GET    /api/v1/guide/settlements                    # lo que trae por entregar + historial (solo lectura)
 ```
 
 Una salida de otro guía responde **404, no 403**: un 403 confirmaría que el id existe.
@@ -236,13 +238,24 @@ PATCH                 /api/v1/admin/experience-departures/{id}   # guía, cupo (
 POST                  /api/v1/admin/experience-departures/{id}/cancel     # { reason } — reembolsa y avisa
 POST                  /api/v1/admin/experience-departures/{id}/complete   # 409 si no ha empezado
 
+GET                   /api/v1/admin/experience-settings            # anticipo global y horas para reembolsar (20.7)
+PUT                   /api/v1/admin/experience-settings
+GET                   /api/v1/admin/experience-bookings/{code}/cancellation-preview   # cuánto se devolvería hoy
+PATCH                 /api/v1/admin/experience-bookings/{code}/cancel     # { reason, refund } — cancela el huésped
+POST                  /api/v1/admin/experience-bookings/{code}/balance    # corregir el saldo marcado por el guía
+
+GET                   /api/v1/admin/guides/{id}/settlements              # entregas del guía
+GET                   /api/v1/admin/guides/{id}/settlements/pending      # cobrado sin entregar
+POST                  /api/v1/admin/guides/{id}/settlements              # { codes?, method, reference } — registra la entrega
+DELETE                /api/v1/admin/guide-settlements/{id}               # deshace una entrega
+
 GET                   /api/v1/admin/experience-private-requests?status=
 PATCH                 /api/v1/admin/experience-private-requests/{id}      # { status, admin_notes }
 
 PATCH                 /api/v1/admin/experience-reviews/{id}/hide
 PATCH                 /api/v1/admin/experience-reviews/{id}/unhide
 
-GET                   /api/v1/admin/reports/experiences          # ocupación e ingresos
+GET                   /api/v1/admin/experience-reports?from=&to= # en línea, saldo cobrado, por entregar (20.7)
 GET                   /api/v1/admin/reports/guides               # tours, ocupación, calificación
 ```
 
