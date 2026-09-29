@@ -18,7 +18,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ✅ Resuelta | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
 | D12 | Cobro y cancelación de experiencias | ✅ Resuelta · cambió el 29-sep | Checkout de experiencias, reembolsos, panel del guía, reportes |
-| D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
+| D13 | Margen sobre el tipo de cambio | ✅ Resuelta | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 | D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
@@ -737,9 +737,18 @@ El sprint S3 (checkout de experiencias) y el texto de la política de cancelaci�
 
 ## D13 — ¿Se aplica un margen sobre el tipo de cambio?
 
-**Estado:** ⏳ Pendiente · Amplía **D1**
+**Estado:** ✅ Resuelta (29-sep-2026) — **sin margen: se cobra siempre en pesos** · Amplía **D1**
 
-> **Nota (29-sep-2026):** ya se decidió **cobrar siempre en pesos** (Casas_back #73). Stripe no ofrece al huésped pagar en otra moneda, y el 2 % de conversión ya no lo paga el negocio. Lo que queda de esta duda es si se quiere un margen para cubrir que el tipo de cambio del día de la reserva difiera del de la liquidación.
+### Cómo se resolvió
+
+La duda existía porque, al cobrar en dólares, Stripe convierte a pesos con su diferencial (1–2 %) y ese costo lo pagaba el negocio. **Se eliminó la causa en vez de compensarla:**
+
+- **El cobro es siempre en pesos** (Casas_back #73). Stripe no le ofrece al huésped pagar en otra moneda.
+- **El precio en USD/CAD es solo una referencia** para el huésped. El checkout y la reserva dicen el importe exacto en pesos y el tipo de cambio.
+- **Lo que se cobra en pesos se congela al reservar** (`base_currency_total`). El negocio recibe exactamente ese importe, así que no hay diferencial que cubrir ni riesgo por variación del tipo de cambio.
+- **Si la tarjeta es extranjera, la conversión la hace el banco del huésped, a su cargo.** El aviso antes de pagar lo dice.
+
+Por eso **no se aplica margen**: sería cobrarle de más al huésped por un costo que el negocio ya no tiene. Lo de abajo se conserva como contexto de por qué se preguntó.
 
 ### Contexto
 
@@ -790,9 +799,7 @@ Con un 3 % de margen sí se nota, y un huésped que compare puede preguntar. Es 
 
 ### Qué se bloquea mientras no se responda
 
-Nada del desarrollo: el sitio funciona hoy con margen **0 %**, que es el valor por omisión. Lo que se bloquea es saber si el negocio está perdiendo un 1–2 % en cada reserva cobrada en divisa extranjera.
-
-Es configuración, no código: al responder se ajusta un valor y aplica desde la siguiente cotización.
+Nada: resuelta. Ya no se cobra en divisa extranjera, así que el negocio no pierde el 1–2 % por reserva.
 
 ---
 
