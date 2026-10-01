@@ -472,7 +472,7 @@ El guía no puede registrar entregas: solo las lee. Un saldo ya entregado no se 
 
 ### B. Administración → Experiencias
 
-Cuatro subsecciones bajo `/dashboard/experiences`. Todas son solo de administrador: el personal (`staff`) entra al panel pero la API le responde 403 aquí.
+Subsecciones bajo `/dashboard/experiences`: gestión de tours, catálogo, solicitudes privadas, **reservas**, guías y **reporte** (las dos últimas en negrita llegaron con el anticipo, 20.7). Todas son solo de administrador: el personal (`staff`) entra al panel pero la API le responde 403 aquí.
 
 **B.1 Gestión de tours** (`/dashboard/experiences`)
 
@@ -481,6 +481,7 @@ Cuatro subsecciones bajo `/dashboard/experiences`. Todas son solo de administrad
 | Métricas del mes | Salidas · ocupación **pagada** · personas confirmadas · experiencias publicadas · calificación del mes |
 | Calendario de salidas | Mes completo, filtrable por experiencia; cada salida muestra hora y `pagadas/mínimo`, con color por estado y candado si es privada |
 | Panel de la salida seleccionada | Barra de pagados contra mínimo y cupo · cuándo se decide · apartados sin pagar (aparte, no cuentan) · guía · cupo · personas con sus notas · notas internas · **liga de pago** (privada) · **liga de reseñas** · marcar realizada · **cancelar salida** (con el resultado de reembolsos) |
+| Enlace directo | `?mes=YYYY-MM&salida=ID` abre el calendario en ese mes con la salida elegida; lo usa la lista de reservas |
 | Modal **Nueva salida** | Experiencia · fecha · hora (Cancún) · guía · cupo, mínimo y precio (vacíos = los de la experiencia) · **privada** · **repetición por días de la semana hasta una fecha** (máx. 6 meses) |
 
 ⚠️ **La repetición genera N filas reales, no una regla.** Marcar "martes y jueves durante 8 semanas" crea 16 salidas independientes con `recurrence_group_id` común. Una salida individual se edita o cancela sin tocar las demás — que es justo lo que hace falta cuando el guía se enferma un martes.
@@ -488,6 +489,10 @@ Cuatro subsecciones bajo `/dashboard/experiences`. Todas son solo de administrad
 Al crear el lote hay que **avisar de las colisiones** (`UNIQUE(experience_id, starts_at)`) en vez de fallar entero: *"14 salidas creadas, 2 omitidas porque ya existían"*.
 
 ⚠️ **Reducir el límite de personas por debajo de `seats_taken` debe rechazarse.** Un cupo de 8 con 10 reservados es un tour que no cabe en la lancha. El formulario debe impedirlo y explicar por qué, no truncar en silencio.
+
+**Reservas** (`/dashboard/experiences/reservas`)
+
+Todas las reservas de experiencias en una tabla, sin navegar el calendario salida por salida. Por omisión, las de salidas de hoy en adelante, de la más próxima a la más lejana; con rango de fechas se ven también las pasadas. Búsqueda por código, nombre o correo; filtros por experiencia, estado y saldo (por cobrar / cobrado). Cada fila: experiencia, fecha, hora y guía · cliente con correo y teléfono · personas · total y anticipo en pesos · saldo al guía (por cobrar, cobrado con su método, o entregado). El código abre la salida en el calendario, que es donde se cobra, se cancela y se pasa lista.
 
 **B.2 Catálogo** (`/dashboard/experiences/catalogo`)
 

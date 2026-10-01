@@ -238,6 +238,8 @@ PATCH                 /api/v1/admin/experience-departures/{id}   # guía, cupo (
 POST                  /api/v1/admin/experience-departures/{id}/cancel     # { reason } — reembolsa y avisa
 POST                  /api/v1/admin/experience-departures/{id}/complete   # 409 si no ha empezado
 
+GET                   /api/v1/admin/experience-bookings?status=&experience_id=&from=&to=&q=&balance=pending|collected
+                                                                   # lista: por omisión de hoy en adelante, por fecha de salida
 GET                   /api/v1/admin/experience-settings            # anticipo global y horas para reembolsar (20.7)
 PUT                   /api/v1/admin/experience-settings
 GET                   /api/v1/admin/experience-bookings/{code}/cancellation-preview   # cuánto se devolvería hoy
