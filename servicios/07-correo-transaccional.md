@@ -62,8 +62,8 @@ composer require resend/resend-php
 MAIL_MAILER=resend
 RESEND_API_KEY=re_xxxxxxxxxxxx
 MAIL_FROM_ADDRESS=reservas@midominio.com
-MAIL_FROM_NAME="Casa Caribe"
-MAIL_BRAND="Casa Caribe"
+MAIL_FROM_NAME="RivieraBnb"
+MAIL_BRAND="RivieraBnb"
 ```
 
 ⚠️ **Es `RESEND_API_KEY`, no `RESEND_KEY`.** Es la que lee `config/services.php`; con la otra el envío falla por clave vacía.

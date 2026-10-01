@@ -1,6 +1,6 @@
 # 17. Sistema de diseño del frontend
 
-Tokens, componentes y decisiones visuales derivados del prototipo **Casa Caribe** (Magic Patterns). Complementa la sección 4 (estructura del frontend), que define *dónde* vive cada archivo; esta sección define *qué* contienen.
+Tokens, componentes y decisiones visuales derivados del prototipo **Casa Caribe** (Magic Patterns). ⚠️ El proyecto ahora se llama **RivieraBnb** (1-oct-2026); el prototipo conserva su nombre original. Complementa la sección 4 (estructura del frontend), que define *dónde* vive cada archivo; esta sección define *qué* contienen.
 
 ---
 
