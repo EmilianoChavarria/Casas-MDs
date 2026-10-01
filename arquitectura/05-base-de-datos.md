@@ -100,8 +100,15 @@ promotion_property    (promotion_id FK, property_id FK)  -- sin filas = todas
 promotion_redemptions (id, promotion_id FK, booking_id FK, customer_id FK,
                         amount_discounted, redeemed_at)
 
-availability     (id, property_id FK, date, status ENUM(available,blocked,booked), booking_id FK NULL)
+availability     (id, property_id FK, date, status ENUM(available,blocked,booked), booking_id FK NULL,
+                  external_calendar_id FK NULL)   -- quién lo bloqueó: Airbnb, Booking… (5.3)
                   -- UNIQUE (property_id, date)
+
+external_calendars (id, property_id FK, name, url TEXT cifrada, is_active,
+                  last_synced_at, last_status, last_error, blocked_nights, conflicts JSON)
+                  -- la URL .ics de Airbnb lleva un token secreto: va cifrada
+
+properties.ical_token  -- secreto de la URL .ics que se le da a Airbnb; regenerable
 
 bookings         (id, property_id FK, customer_id FK, checkin, checkout,
                    guests, status ENUM(pending,confirmed,cancelled,expired,completed),
@@ -215,7 +222,7 @@ audit_logs       (id, auditable_type, auditable_id, action, old_values JSON,
 
 **Toda la estrategia anterior protege contra carreras *dentro de este sistema*.** No protege contra ventas en plataformas externas: si la misma casa estuviera publicada en Airbnb o Booking, alguien podría reservar allí y este sistema seguiría vendiendo esas noches, porque nadie le avisó.
 
-**Decisión: se asume canal único** — las casas se venden exclusivamente por este sitio. El cliente lo confirmó.
+~~**Decisión: se asume canal único**~~ — **cambió el 1-oct-2026:** el cliente ya tenía las casas publicadas en Airbnb. Se implementó la sincronización iCal descrita abajo (Casas_back #79, Casas_front #57).
 
 Si ese supuesto cambia, la solución estándar es sincronización **iCal** en ambos sentidos:
 
@@ -223,6 +230,15 @@ Si ese supuesto cambia, la solución estándar es sincronización **iCal** en am
 - **Importar:** un job periódico que lee los `.ics` externos y bloquea esas fechas con un estado nuevo `blocked_external` en `availability` (distinto de `blocked`, para que el admin no lo pueda desbloquear a mano y provocar un choque).
 
 ⚠️ Incluso con iCal, la sincronización **no es en tiempo real**: las plataformas refrescan cada 2–4 horas, así que queda una ventana de riesgo. La única alternativa de tiempo real son las APIs de partner de cada plataforma, que requieren aprobación comercial.
+
+**Cómo quedó implementado:**
+
+- **El estado no cambia.** No se creó un estado `blocked_external`: lo de Airbnb se guarda como `blocked` y lo distingue `external_calendar_id`. Todas las consultas de disponibilidad ya tratan `blocked` como ocupado; un estado nuevo habría que acordarse de añadirlo en cada una. El panel **no deja desbloquear ni sobrescribir** lo que vino de Airbnb.
+- **`calendars:sync` cada 15 min.** Bloquea lo que Airbnb marca ocupado y libera lo que deja de marcar (cancelado allá). Ignora el pasado y lo que está a más de 18 meses.
+- ⚠️ **Si la URL falla o no devuelve iCal, no se libera nada.** Tomarlo como "calendario vacío" volvería a vender todo lo reservado en Airbnb.
+- **Choques.** Si Airbnb ocupa una noche ya vendida aquí, se registra en el calendario y se avisa a los admins por correo una vez. Alguien tiene que resolverlo con uno de los dos huéspedes.
+- **Exportar.** `GET /api/v1/calendars/{ical_token}.ics` lleva rangos de lo reservado y bloqueado aquí, sin datos de huéspedes.
+- ⚠️ **Sin eco.** El `.ics` exportado **no incluye** lo que vino de Airbnb: si se lo devolviera, una cancelación allá nunca se liberaría.
 
 **Costo de equivocarse en este supuesto: acotado.** iCal es aditivo —una tabla, un job y un estado más— y se estima en 30–45 h. No obliga a rehacer el motor de reservas, a diferencia de multi-divisa. Por eso asumir canal único es una apuesta de bajo riesgo.
 

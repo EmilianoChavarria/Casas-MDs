@@ -5,7 +5,7 @@
 
 No es un marketplace: es un **sistema propietario de gestión y venta de inventario de casas de una sola empresa**, similar a un motor de reservas hotelero más un frontend público tipo Airbnb.
 
-⚠️ **Canal de venta único.** Las casas se venden exclusivamente por este sitio, no en Airbnb, Booking ni otras plataformas. Es un supuesto confirmado con el cliente y sostiene toda la estrategia anti doble-booking de la sección 5: sin canales externos, este sistema es la única fuente de verdad de la disponibilidad. **No es un "channel manager"** — si algún día se publica en plataformas externas, hace falta sincronización iCal (ver 5.3).
+⚠️ **Canal de venta: este sitio y Airbnb (cambió el 1-oct-2026).** El supuesto original era canal único: las casas se vendían solo por este sitio. El cliente ya tenía las casas publicadas en Airbnb, así que la disponibilidad se **sincroniza por iCal en los dos sentidos** (5.3). Lo reservado en Airbnb se bloquea aquí, y lo vendido aquí sale en un `.ics` que Airbnb importa. **Sigue sin ser un "channel manager":** solo viajan fechas ocupadas, no precios ni reservas. Y la sincronización no es en tiempo real, así que los choques se detectan y se avisan.
 
 #### Dueños externos: co-anfitriones
 
@@ -13,7 +13,7 @@ Un dueño puede publicar su casa dentro del sistema y queda como **co-anfitrión
 
 ⚠️ **Esto no es multi-tenant y no debe construirse como tal.** No hay `tenant_id`, ni datos duplicados, ni bases ni conexiones separadas. Es **un rol de lectura sobre un subconjunto del inventario**: el aislamiento es un filtro por pertenencia en cada consulta de `/host/*` (ver 5.13 y 6). Leer "co-anfitrión" y construir aislamiento de inquilinos sería pagar la complejidad de un marketplace sin tener uno.
 
-⚠️ **No cambia el supuesto de canal único.** El dueño no publica su casa en Airbnb en paralelo — si lo hiciera, vuelve entero el problema de doble reserva de 5.3, y ya no bastaría con que este sistema sea la única fuente de verdad.
+⚠️ **Si el dueño también publica en Airbnb**, su calendario se conecta igual que los del cliente (5.3). Sin conectarlo, vuelve el problema de doble reserva.
 
 Arquitectura: **Backend API-first (Laravel) + Frontend desacoplado (Next.js)**, comunicándose por REST/JSON sobre HTTPS. SSR/ISR en Next.js para SEO de las páginas públicas de propiedades.
 
