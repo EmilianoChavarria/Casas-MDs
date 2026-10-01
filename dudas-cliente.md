@@ -17,8 +17,8 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D9 | ¿Los guías entran al sistema, y cómo? | ✅ Resuelta | Panel del guía, rol y autenticación (sección 20) |
 | D10 | Impuestos de las experiencias: ¿IVA solo, o también ISH? | ✅ Resuelta | Total de la experiencia, facturación |
 | D11 | Link de reseña: ¿uno por grupo o uno por reserva? | ✅ Resuelta | Reseñas de experiencias, estrellas en Google |
-| D12 | Cobro y cancelación de experiencias | ✅ Resuelta | Checkout de experiencias, reembolsos |
-| D13 | Margen sobre el tipo de cambio | ⏳ Pendiente | Precio que ven los huéspedes de EE.UU. y Canadá |
+| D12 | Cobro y cancelación de experiencias | ✅ Resuelta · cambió el 29-sep | Checkout de experiencias, reembolsos, panel del guía, reportes |
+| D13 | Margen sobre el tipo de cambio | ✅ Resuelta | Precio que ven los huéspedes de EE.UU. y Canadá |
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 | D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
@@ -677,7 +677,7 @@ El sprint S5 y la decisión de emitir o no datos estructurados de calificación 
 
 ## D12 — Cobro y cancelación de las experiencias
 
-**Estado:** ✅ Resuelta (25-ago-2026) — cobro completo al reservar · Amplía **D7**
+**Estado:** ✅ Resuelta (25-ago-2026) — cobro completo al reservar · ⚠️ **Cambió el 29-sep-2026: anticipo por persona y saldo al guía** · Amplía **D7**
 
 ### Contexto
 
@@ -706,6 +706,29 @@ Una experiencia se cobra por adelantado, igual que una casa, pero tiene dos dife
 - **Para el mínimo solo cuentan los lugares pagados**, no los apartados en checkout. En cuanto los pagados llegan al mínimo y la salida tiene guía, se confirma y se le avisa al guía, sin esperar al corte.
 - **Si no se llega al mínimo, se cancela y se reembolsa completo.** El prototipo decía "reagendamos" y "no se cobra hasta confirmar"; ambos textos se cambiaron para que coincidan con esta respuesta. Detalle en la sección 20.5 de arquitectura.
 
+### Cambio del 29-sep-2026: anticipo en línea y saldo al guía
+
+El cliente cambió la respuesta a la pregunta 1. **Ya no se cobra el tour completo en línea**:
+
+| Tema | Decisión |
+|---|---|
+| Qué se cobra en línea | Un **anticipo fijo por persona, en pesos**. Hay un valor global y cada experiencia puede tener el suyo. En 0 se cobra completo, como antes |
+| El resto | Se le paga **al guía el día del tour**. El guía marca en su panel quién ya pagó y cómo (efectivo, transferencia, tarjeta) |
+| De quién es el saldo | **Del negocio.** El guía lo cobra y se lo entrega; la oficina registra cada entrega |
+| Si cancela el huésped | El anticipo se devuelve **solo si cancela con al menos X horas** de anticipación (48 por omisión, configurable). Después se pierde |
+| Si cancela el operador | Sin cambio: reembolso **íntegro** de lo cobrado (20.5) |
+
+**Por qué:** un reembolso cuesta la comisión de Stripe de lo cobrado. Sobre un anticipo, la comisión es chica; sobre el tour entero, no.
+
+Cómo quedó aplicado (Casas_back #74, #76, #77; Casas_front #53, #54, #55):
+
+- El anticipo y el saldo **se congelan al reservar**: cambiar el anticipo después no mueve lo que ya se le dijo a quien reservó.
+- La cancelación de una reserva suelta la hace el administrador cuando el huésped la pide, igual que en casas. Antes de confirmar ve cuánto se devuelve.
+- Un saldo ya entregado al negocio no se puede desmarcar: primero se deshace la entrega.
+- El reporte de experiencias separa tres bolsas: lo cobrado en línea, lo cobrado en mano por los guías, y lo que cada guía trae todavía por entregar.
+
+⚠️ **Falta en los términos (D8):** el plazo de reembolso del anticipo y que el saldo se paga al guía. Hoy solo lo dicen la tarjeta de reserva, el checkout y los correos.
+
 ### Qué se bloquea mientras no se responda
 
 El sprint S3 (checkout de experiencias) y el texto de la política de cancelación que se muestra en la tarjeta de reserva. La respuesta a la pregunta 2 debe entrar en los **términos y condiciones** de **D8**.
@@ -714,7 +737,18 @@ El sprint S3 (checkout de experiencias) y el texto de la política de cancelaci�
 
 ## D13 — ¿Se aplica un margen sobre el tipo de cambio?
 
-**Estado:** ⏳ Pendiente · Amplía **D1**
+**Estado:** ✅ Resuelta (29-sep-2026) — **sin margen: se cobra siempre en pesos** · Amplía **D1**
+
+### Cómo se resolvió
+
+La duda existía porque, al cobrar en dólares, Stripe convierte a pesos con su diferencial (1–2 %) y ese costo lo pagaba el negocio. **Se eliminó la causa en vez de compensarla:**
+
+- **El cobro es siempre en pesos** (Casas_back #73). Stripe no le ofrece al huésped pagar en otra moneda.
+- **El precio en USD/CAD es solo una referencia** para el huésped. El checkout y la reserva dicen el importe exacto en pesos y el tipo de cambio.
+- **Lo que se cobra en pesos se congela al reservar** (`base_currency_total`). El negocio recibe exactamente ese importe, así que no hay diferencial que cubrir ni riesgo por variación del tipo de cambio.
+- **Si la tarjeta es extranjera, la conversión la hace el banco del huésped, a su cargo.** El aviso antes de pagar lo dice.
+
+Por eso **no se aplica margen**: sería cobrarle de más al huésped por un costo que el negocio ya no tiene. Lo de abajo se conserva como contexto de por qué se preguntó.
 
 ### Contexto
 
@@ -765,9 +799,7 @@ Con un 3 % de margen sí se nota, y un huésped que compare puede preguntar. Es 
 
 ### Qué se bloquea mientras no se responda
 
-Nada del desarrollo: el sitio funciona hoy con margen **0 %**, que es el valor por omisión. Lo que se bloquea es saber si el negocio está perdiendo un 1–2 % en cada reserva cobrada en divisa extranjera.
-
-Es configuración, no código: al responder se ajusta un valor y aplica desde la siguiente cotización.
+Nada: resuelta. Ya no se cobra en divisa extranjera, así que el negocio no pierde el 1–2 % por reserva.
 
 ---
 

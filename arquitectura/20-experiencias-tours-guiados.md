@@ -109,12 +109,23 @@ experience_bookings (id, departure_id FK, customer_id FK,
                      seats SMALLINT, unit_price DECIMAL,
                      subtotal, discount_total, taxes_total, total_price, currency,
                      fx_rate DECIMAL NULL, base_currency_total DECIMAL NULL,
+                     deposit_amount DECIMAL NULL,        -- anticipo en línea, en pesos (20.7)
+                     balance_amount DECIMAL NULL,        -- saldo al guía, en pesos; congelados
+                     balance_paid_at NULL, balance_method ENUM(cash,transfer,card) NULL,
+                     balance_marked_by FK users NULL,    -- quién dijo "ya pagó"
+                     guide_settlement_id FK NULL,        -- en qué entrega va; NULL = sin entregar
                      status ENUM(pending,confirmed,cancelled,expired,completed),
                      payment_method ENUM(card,oxxo,spei) NULL,
                      expires_at DATETIME NULL,
                      terms_version_accepted VARCHAR, terms_accepted_at,
                      code CHAR(8) UNIQUE)                -- código corto para pasar lista
                     -- INDEX (departure_id, status)
+
+-- ── Entregas del guía al negocio (20.7) ───────────────────────────────
+guide_settlements   (id, guide_id FK, bookings_count, amount DECIMAL, currency,
+                     received_at, method NULL, reference NULL, notes NULL)
+                    -- importes congelados: es un recibo
+                    -- INDEX (guide_id, received_at)
 
 experience_attendees (id, experience_booking_id FK, full_name,
                      age_band ENUM(adult,child) NULL,
@@ -244,6 +255,8 @@ $departures = ExperienceDeparture::where('guide_id', $user->guide->id)
 ⚠️ **La policy protege el detalle; el scope protege el listado.** Es el mismo aviso de la sección 5.6 sobre `role_id`: una policy no impide que un listado devuelva filas de más, porque el listado nunca pasa por `authorize()` fila a fila. Se necesitan las dos.
 
 **Lo que un guía NO ve, aunque sea de su salida:** el total pagado por cada reserva, el método de pago, el correo completo del cliente y sus datos de facturación. Ve **nombre, número de personas, si está pagado (sí/no) y las notas operativas**. Eso es lo que necesita para pasar lista y para no darle un cacahuate a quien es alérgico; el resto es información financiera del negocio.
+
+**Excepción desde el anticipo (20.7): el guía ve el SALDO a cobrar de cada reserva**, porque es quien lo cobra en mano. Sigue sin ver el total, el anticipo ni el método con que se pagó en línea. El saldo solo lo puede marcar en reservas de sus salidas (404 en las ajenas).
 
 ### Dar de baja a un guía
 
@@ -376,7 +389,7 @@ La alternativa —una tabla `experience_payments` aparte— evita la migración 
 
 ### Precio
 
-✅ **Cobro completo al reservar (D12).** No hay anticipo ni saldo en el punto de encuentro: el 100% se cobra en línea, lo que asegura el cupo y evita conciliar efectivo después de cada tour.
+✅ **Anticipo en línea y saldo al guía (D12, cambió el 29-sep-2026).** Antes se cobraba el 100 % en línea. Ahora en línea se cobra un **anticipo fijo por persona, en pesos**, y el resto lo cobra el guía el día del tour. Detalle en *Anticipo, saldo al guía y entregas*, más abajo.
 
 ⚠️ **OXXO y SPEI solo si la salida cae después del vencimiento de la referencia.** Una referencia tarda hasta ~3 días en pagarse; ofrecerla para un tour del sábado aparta un cupo que probablemente expire sin pago. La pasarela debe ocultar esos métodos cuando no dan tiempo, no rechazarlos después.
 
@@ -384,7 +397,39 @@ La alternativa —una tabla `experience_payments` aparte— evita la migración 
 
 **El motor de temporadas NO aplica a experiencias.** Una salida es una fecha concreta con un precio concreto; el admin lo fija al crearla. Meter `seasons` y `price_rules` aquí añadiría complejidad para resolver un problema que el formulario de "Nueva salida" ya resuelve capturando el precio.
 
-**Multi-divisa sí aplica** (D1): si el huésped canadiense paga la casa en CAD, también la experiencia. Se reutiliza `exchange_rates` y el congelado de tasa (`fx_rate`, `base_currency_total`). Sin trabajo extra de infraestructura, pero sí de integración.
+**Multi-divisa sí aplica, pero solo para mostrar** (D1, D13): el huésped ve el precio en USD o CAD, y **el cobro es siempre en pesos**. Se reutiliza `exchange_rates` y el congelado de tasa (`fx_rate`, `base_currency_total`). ⚠️ `base_currency_total` va en **pesos**, convertido desde la moneda de la salida, igual que en casas. Antes quedaba en la moneda de la salida, y una salida con precio en dólares se habría cobrado en "pesos" con la cifra en dólares.
+
+### Anticipo, saldo al guía y entregas
+
+Son tres momentos del mismo dinero, y cada uno tiene su dueño:
+
+| Momento | Quién lo mueve | Dónde queda |
+|---|---|---|
+| **Anticipo** al reservar | Stripe, en pesos | `payments` (como cualquier cobro) |
+| **Saldo** el día del tour | El huésped le paga al guía en mano | `experience_bookings.balance_paid_at` / `balance_method` |
+| **Entrega** del saldo al negocio | El guía se lo da a la oficina | `guide_settlements` + `experience_bookings.guide_settlement_id` |
+
+**Anticipo.** Monto fijo por persona, en pesos. Global en `configurations` (`experiences.deposit_per_person`) y opcional por experiencia (`experiences.deposit_per_person`: NULL = el global, 0 = cobro completo). Tiene como tope el total. Se **congela** en la reserva (`deposit_amount`, `balance_amount`), igual que el precio: cambiarlo después no mueve lo que ya se le dijo a nadie. `payableAmount()` devuelve el anticipo, así que Stripe, OXXO y SPEI no cambian.
+
+**Cancelación del huésped.** Solo la hace el administrador (`PATCH admin/experience-bookings/{code}/cancel`), con vista previa. Se devuelve lo cobrado si faltan al menos `experiences.deposit_refund_hours` horas (48 por omisión); si no, el anticipo se pierde. El reembolso va **antes** de cancelar, igual que en la salida cancelada. El correo al huésped dice siempre qué pasa con el dinero.
+
+**Saldo.** El importe no se teclea: es `balance_amount`. El guía solo marca que ya se cobró y cómo; queda quién lo marcó.
+
+**Entregas.** Son la liquidación del co-anfitrión en sentido contrario, con las mismas reglas:
+
+- lo pendiente es "cobrado y sin `guide_settlement_id`", **nunca por fechas**;
+- la entrega se crea dentro de una transacción con lock;
+- los importes de la entrega quedan congelados;
+- deshacer una entrega es borrarla.
+
+El guía no puede registrar entregas: solo las lee. Un saldo ya entregado no se puede desmarcar.
+
+**Reporte** (`GET admin/experience-reports`), en pesos y por fecha de salida:
+
+- **ventas;**
+- **en línea:** cobrado, reembolsado y neto. Sale de `payments`, así que un anticipo retenido por cancelar tarde sí cuenta;
+- **saldo:** esperado, cobrado, entregado, sin cobrar de salidas pasadas (no pagó o no se presentó) y pendiente de salidas próximas;
+- **lo que cada guía trae hoy por entregar.** Esto no depende del rango: filtrarlo por mes escondería el efectivo de un tour del mes anterior.
 
 ### Impuestos ⚠️
 

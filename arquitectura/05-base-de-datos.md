@@ -156,7 +156,11 @@ experience_departures  (id, experience_id FK, guide_id FK NULL, starts_at,
                          status, review_token, is_private, private_token)
 experience_private_requests (id, experience_id FK, group_size, preferred_date,
                          status, departure_id FK NULL, ...)
-experience_bookings    (id, departure_id FK, customer_id FK, seats, total_price, status)
+experience_bookings    (id, departure_id FK, customer_id FK, seats, total_price, status,
+                         deposit_amount, balance_amount, balance_paid_at,
+                         guide_settlement_id FK NULL)      -- anticipo y saldo (20.7)
+guide_settlements      (id, guide_id FK, bookings_count, amount, received_at)
+                         -- lo que el guía entregó del saldo cobrado en mano
 experience_attendees   (id, experience_booking_id FK, full_name, notes_encrypted)
 experience_reviews     (id, departure_id FK, experience_id FK, guide_id FK,
                          rating_experience, rating_guide, consent_publish, status)
