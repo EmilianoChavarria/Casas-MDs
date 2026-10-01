@@ -38,6 +38,7 @@ DELETE /api/v1/auth/google/unlink                          # desvincular
 GET    /api/v1/properties?checkin=&checkout=&price_min=&price_max=&amenities[]=&guests=
 GET    /api/v1/properties/{slug}
 GET    /api/v1/properties/{id}/availability?month=2026-08   # incluye precio por noche y min_nights
+GET    /api/v1/calendars/{ical_token}.ics                   # .ics de la casa para Airbnb (5.3); sin sesión, lo protege el token
 POST   /api/v1/bookings/quote                               # desglose de precio; NO aparta fechas
 POST   /api/v1/promotions/validate                          # { code, property_id, checkin, checkout }
 GET    /api/v1/bookings/{id}/status
@@ -122,7 +123,11 @@ GET|POST|PUT|DELETE  /api/v1/admin/promotions[/{id}]
 PATCH                 /api/v1/admin/promotions/{id}/toggle
 GET                   /api/v1/admin/promotions/{id}/redemptions
 
-PATCH                 /api/v1/admin/availability/{propertyId}   # bloquear/desbloquear fechas
+PATCH                 /api/v1/admin/availability/{propertyId}   # bloquear/desbloquear fechas (no toca lo de Airbnb)
+GET|POST              /api/v1/admin/properties/{id}/external-calendars   # calendarios de Airbnb; el alta sincroniza al momento
+PUT|DELETE            /api/v1/admin/external-calendars/{id}               # quitarlo libera sus noches
+POST                  /api/v1/admin/external-calendars/{id}/sync          # sincronizar ahora
+POST                  /api/v1/admin/properties/{id}/ical-token            # nueva URL de exportación; la vieja da 404
 GET|PUT               /api/v1/admin/bookings[/{id}]
 PATCH                 /api/v1/admin/bookings/{id}/confirm
 PATCH                 /api/v1/admin/bookings/{id}/cancel
