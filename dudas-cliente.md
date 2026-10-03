@@ -22,6 +22,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 | D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
+| D17 | Modo de pago manual por link de Clip, mientras no hay Stripe en producción | ✅ Resuelta · temporal | Checkout, correos de reserva, panel admin, reportes de cobro |
 
 ---
 
@@ -972,6 +973,70 @@ El co-anfitrión (el dueño externo, 5.13) tiene su propio panel donde ve las re
 Lo que se decide es **trabajo pequeño**: una notificación nueva por destinatario, su plantilla de correo y el registro que evita mandarla dos veces, que es el mismo mecanismo que ya usan los demás avisos (19.4).
 
 ---
+
+## D17 — Modo de pago manual por link de Clip, mientras no hay Stripe en producción
+
+**Estado:** ✅ Resuelta · temporal (2-oct-2026) · Relacionada con **D8**
+
+> El cliente avisó que el alta de su empresa —lo que hace falta para activar Stripe
+> en producción— no estará lista hasta dentro de aproximadamente un mes, pero el
+> sistema tiene que empezar a operar con cobros reales ya. Propuso cobrar mientras
+> tanto por un link de pago de **Clip** (app de pagos mexicana, no necesita persona
+> moral ni RFC), confirmando el pago a mano desde el panel.
+
+### Cómo queda operando
+
+1. El huésped reserva igual que siempre: mismas fechas, mismo cálculo de precio,
+   mismos impuestos. Lo único que cambia es la forma de pagar.
+2. El único método que se ofrece mientras este modo esté activo es **"Pago por
+   link"**. Tarjeta, OXXO y SPEI se ocultan en el sitio y el servidor los rechaza
+   aunque alguien los mande a mano: Stripe no debe cobrar nada real todavía.
+3. Al reservar, el sistema le pide a Clip un link de pago **por API**, automático —
+   nadie en el negocio tiene que entrar a la app de Clip a generarlo—. El huésped
+   recibe su correo de siempre con los datos de la reserva y, al continuar, se le
+   manda directo a pagar ahí.
+4. Clip avisa cuando el pago se completa, pero **ese aviso no confirma la reserva
+   solo**: Clip no firma sus webhooks (a diferencia de Stripe), así que lo que
+   hace el sistema es volver a preguntarle a Clip con la clave secreta —eso sí es
+   de fiar— y dejar la reserva marcada como "Clip reporta pagado" en el panel.
+5. **Quien de verdad confirma el pago es el administrador, con un clic**, después
+   de ver en su Panel de Clip que el dinero llegó. Es la pieza que el cliente pidió
+   explícitamente mantener manual, y de paso es lo que protege contra un aviso de
+   Clip que, al no estar firmado, no basta por sí solo para dar una reserva por
+   pagada.
+6. Al confirmarse, la reserva sigue el mismo camino que una pagada con Stripe:
+   mismo correo de confirmación, mismo aviso al negocio, mismas fechas bloqueadas.
+   No hay una segunda versión de esa lógica — se reutiliza tal cual.
+
+### Por qué los reportes no pierden nada
+
+Los reportes de ingresos suman el total de la reserva (congelado al reservar), no
+algo que dependa de qué pasarela se usó: en cuanto una reserva de Clip se confirma,
+cuenta exactamente igual que una de Stripe. El reporte de cobros por proveedor
+—el que sí distingue entre pasarelas— muestra a Clip como su propia fila, con su
+comisión en cero por omisión (Clip no la informa por API) y con un campo para que
+el administrador la corrija a mano si algún día importa esa precisión.
+
+### El interruptor
+
+Es un valor de configuración (`payments.manual_mode`), igual que otros parámetros
+que ya se cambian sin tocar código. Apagarlo en cuanto el alta de la empresa esté
+lista devuelve el sitio a Stripe sin perder nada de lo ya cobrado por Clip, que
+queda en el historial para siempre.
+
+### Lo que queda pendiente de verificar
+
+- La integración con la API de Clip se probó a mano contra su entorno de pruebas
+  (sandbox) con credenciales de prueba, no contra producción: antes de activar el
+  modo con dinero real conviene repetir una prueba rápida con las credenciales
+  definitivas.
+- Clip no documenta públicamente su propia comisión por cobro. Si el cliente
+  quiere que el reporte la refleje con exactitud, hay un campo para anotarla a
+  mano al confirmar cada pago; si no se usa, el reporte asume que Clip no cobra
+  nada, que es la cifra más simple y la que pidió el cliente para empezar.
+
+---
+
 ## Cómo usar este documento
 
 - Cada duda es autocontenida: se puede enviar al cliente por separado sin que le falte contexto.
