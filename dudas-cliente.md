@@ -22,6 +22,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D14 | Base de cálculo de la comisión del co-anfitrión | ⏳ Pendiente | Liquidación al dueño, reporte de su panel |
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 | D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
+| D17 | Modo de pago manual por link (Mercado Pago), mientras no hay Stripe en producción | ✅ Resuelta · temporal | Checkout, correos de reserva, panel admin, reportes de cobro |
 
 ---
 
@@ -970,6 +971,90 @@ El co-anfitrión (el dueño externo, 5.13) tiene su propio panel donde ve las re
 **Nada.** El sistema opera igual: las reservas entran, se cobran y se ven en el panel.
 
 Lo que se decide es **trabajo pequeño**: una notificación nueva por destinatario, su plantilla de correo y el registro que evita mandarla dos veces, que es el mismo mecanismo que ya usan los demás avisos (19.4).
+
+---
+
+## D17 — Modo de pago manual por link (Mercado Pago), mientras no hay Stripe en producción
+
+**Estado:** ✅ Resuelta · temporal (10-oct-2026) · Relacionada con **D8**, **D1/D13** (06-pagos-mercadopago.md)
+
+> El alta de la empresa del cliente — lo que hace falta para activar Stripe en
+> producción — tardaba alrededor de un mes, y el sistema tenía que empezar a
+> operar con cobros reales antes de eso. El cliente propuso cobrar mientras
+> tanto por un link de pago externo, confirmando el pago a mano desde el
+> panel. Se probó primero con **Clip**, cuyo sandbox nunca llegó a completar
+> un cobro (ver el historial de esta rama); se migró a **Mercado Pago**, que
+> sí completó el flujo de punta a punta en pruebas, y el **10-oct-2026 el
+> cliente aceptó Mercado Pago** para este modo.
+>
+> ⚠️ **Esto NO reabre la decisión de D25-ago (`06-pagos-mercadopago.md`).**
+> Aquella decisión descartó Mercado Pago como pasarela **general** —tarjeta,
+> OXXO, SPEI— frente a Stripe, por no duplicar el panel de conciliación y los
+> webhooks de cada método. Esa razón sigue en pie: **Stripe se queda como la
+> pasarela completa** para cuando esté en producción. Lo que entra ahora es
+> más angosto: Mercado Pago **solo** atiende el método `'manual'` —el link de
+> pago que sustituye a Stripe mientras éste no puede cobrar—, y las dos
+> pasarelas conviven en el código al mismo tiempo (`PaymentGateway`, una
+> entrada más en el arreglo de `AppServiceProvider`). El día que Stripe esté
+> listo, se apaga el modo manual y Mercado Pago deja de usarse — sin que haga
+> falta quitar su integración.
+
+### Cómo queda operando
+
+1. El huésped reserva igual que siempre: mismas fechas, mismo cálculo de
+   precio, mismos impuestos. Lo único que cambia es la forma de pagar.
+2. El único método que se ofrece mientras este modo esté activo es **"Pago
+   por link"**. Tarjeta, OXXO y SPEI se ocultan en el sitio y el servidor los
+   rechaza aunque alguien los mande a mano: Stripe no debe cobrar nada real
+   todavía.
+3. Al reservar, el sistema crea una preferencia de pago de Mercado Pago
+   (Checkout Pro) **por API**, automático — nadie en el negocio tiene que
+   entrar a ninguna app a generar nada—. El huésped recibe el correo de
+   reserva con el link de pago ya incluido.
+4. Mercado Pago avisa cuando el pago se completa, con un webhook **firmado**
+   (`x-signature`). El sistema verifica la firma cuando hay secreto
+   configurado y, en todo caso, vuelve a preguntarle a la API por el pago
+   antes de darlo por bueno — ese webhook por sí solo no confirma la reserva.
+5. **Quien de verdad confirma el pago es el administrador, con un clic**,
+   después de ver en el panel que Mercado Pago lo reportó. Es la pieza que
+   el cliente pidió mantener manual.
+6. Al confirmarse, la reserva sigue el mismo camino que una pagada con
+   Stripe: mismo correo de confirmación, mismo aviso al negocio, mismas
+   fechas bloqueadas. No hay una segunda versión de esa lógica — se reutiliza
+   tal cual.
+
+### Por qué los reportes no pierden nada
+
+Los reportes de ingresos suman el total de la reserva (congelado al
+reservar), no algo que dependa de qué pasarela se usó: en cuanto una reserva
+por Mercado Pago se confirma, cuenta exactamente igual que una de Stripe. El
+reporte de cobros por proveedor —el que sí distingue entre pasarelas—
+muestra a Mercado Pago como su propia fila, con su comisión en cero por
+omisión (no se consulta por API en esta etapa) y con un campo para que el
+administrador la corrija a mano si algún día importa esa precisión.
+
+### El interruptor
+
+Es un valor de configuración (`payments.manual_mode`), igual que otros
+parámetros que ya se cambian sin tocar código. Apagarlo en cuanto Stripe esté
+listo en producción devuelve el sitio a Stripe sin perder nada de lo ya
+cobrado por Mercado Pago, que queda en el historial para siempre.
+
+### Lo que queda pendiente de verificar
+
+- La integración se probó en el sandbox de Mercado Pago con un vendedor y un
+  comprador de prueba, no en producción: antes de activar el modo con dinero
+  real hace falta una cuenta de Mercado Pago con **credenciales de
+  producción**, lo que pide validar la identidad del vendedor en su panel de
+  desarrolladores — un trámite aparte del alta de la empresa para Stripe, y
+  que puede resolverse en paralelo.
+- Mercado Pago manda avisos en dos formatos (JSON y por parámetros en la
+  URL); el sistema ya procesa los dos, y descarta los que no son de pago
+  (`merchant_order`) sin tratarlos como inválidos.
+- Mercado Pago no documenta su propia comisión por cobro consultable por
+  API. Si el cliente quiere que el reporte la refleje con exactitud, hay un
+  campo para anotarla a mano al confirmar cada pago; si no se usa, el
+  reporte asume que no cobra nada, que es la cifra más simple.
 
 ---
 ## Cómo usar este documento
