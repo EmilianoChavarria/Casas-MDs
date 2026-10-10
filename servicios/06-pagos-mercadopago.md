@@ -1,6 +1,16 @@
-# Servicio: Mercado Pago — ❌ DESCARTADO
+# Servicio: Mercado Pago — ❌ DESCARTADO como pasarela general · ✅ activo para el modo manual (D17)
 
-> **Decisión del cliente (25-ago-2026): no se contrata.** El sistema usa
+> ⚠️ **Actualización (10-oct-2026): esto NO se revirtió, se acotó.** Mientras
+> Stripe no puede operar en producción (alta de empresa pendiente), el
+> cliente aceptó Mercado Pago como pasarela de un modo de pago manual por
+> link — ver [`dudas-cliente.md`, D17](../dudas-cliente.md). Las dos
+> pasarelas conviven en el código (`PaymentGateway`) al mismo tiempo:
+> **Stripe sigue siendo la pasarela completa** —tarjeta, OXXO, SPEI— para
+> cuando esté lista; **Mercado Pago solo atiende el link de pago manual**,
+> nunca los otros tres métodos. La decisión de abajo, de no duplicar
+> tarjeta/OXXO/SPEI en dos proveedores, sigue vigente.
+
+> **Decisión del cliente (25-ago-2026): no se contrata como pasarela general.** El sistema usa
 > **Stripe como única pasarela** ([`05-pagos-stripe.md`](05-pagos-stripe.md)),
 > que cubre tarjeta en cualquier moneda y, con cuenta de Stripe México,
 > también **OXXO y SPEI**.
