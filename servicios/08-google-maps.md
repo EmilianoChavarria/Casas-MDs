@@ -1,5 +1,7 @@
 # Servicio: Google Maps Platform
 
+> ✅ **En producción (14-oct-2026).** Proyecto de Google Cloud `RivieraBnb` creado desde cero (correo dedicado), facturación activa. Llave única de servidor, restringida por IP a `201.79.51.112` (el VPS) y por API a **Places API (New)** + **Maps Static API** — probada en vivo desde el servidor, responde correctamente. Valor real en el `.env` de producción, no se repite aquí.
+
 > ✅ **Alcance reducido (decisión de la sección 17.9).** Este servicio **ya no cubre los mapas visibles**. Los mapas públicos van con Leaflet + un proveedor de tiles ([`13-mapas-tiles.md`](13-mapas-tiles.md)), porque son la superficie de mayor volumen y menor exigencia, y su costo de salida es una línea de código.
 >
 > De Google Maps Platform se usa **únicamente Places Autocomplete**, y solo en el formulario admin de alta/edición de propiedades. **No contratar hasta la fase 3 del roadmap** — así no queda una API key olvidada sin restricciones.

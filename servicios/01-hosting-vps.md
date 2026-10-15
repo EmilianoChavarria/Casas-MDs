@@ -39,12 +39,11 @@ Un VPS **no es un servicio que tenga plan gratuito permanente** — siempre se p
 
 Se eligió el plan de $24 en vez del de $48 (4 vCPU/8 GB) que sugería la versión anterior de este documento: para un sitio que todavía no tiene tráfico real, es gasto que no se estaba usando. El droplet se puede redimensionar hacia arriba después, sin perder datos, cuando haga falta.
 
-**Estado: backend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado.
+**Estado (14-oct-2026): backend y frontend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado. Frontend en `https://rivierabnb.com` (Vercel, ver `15-hosting-frontend-vercel.md`), conectado al backend real. Google Maps y Google OAuth con proyecto de Google Cloud nuevo, configurados y probados (ver `08-google-maps.md` y `14-auth-google-oauth.md`).
 
 **Pendiente:**
-- En Google Cloud Console: agregar `201.79.51.112` a la restricción por IP de la llave de Google Maps (si está restringida solo a la IP local de desarrollo).
-- En Google Cloud Console: agregar `https://api.rivierabnb.com/api/v1/auth/google/callback` a los "Authorized redirect URIs" del cliente OAuth.
-- Frontend en Vercel — todavía no contratado.
+- Publicar la app de Google OAuth (bloqueado hasta tener `https://rivierabnb.com/privacidad` en línea — ver `14-auth-google-oauth.md`).
+- Mergear el PR de esta documentación.
 - Mercado Pago: `MERCADOPAGO_WEBHOOK_SECRET` sigue vacío (opcional — sin ella el webhook se procesa igual, solo sin verificar la firma de origen).
 - Stripe: sigue en credenciales de prueba, pendiente del alta de la empresa del cliente.
 
