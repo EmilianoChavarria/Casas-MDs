@@ -2,106 +2,326 @@
 
 ## ¿Para qué se usa?
 
-Servidor donde corre el backend Laravel (Docker: app, Nginx, MySQL, Redis, queue workers). Es la infraestructura base de producción.
+Servidor donde corre el backend Laravel (Nginx, PHP-FPM, MySQL, worker de colas, scheduler) directo sobre el sistema operativo — **sin Docker**. Es la infraestructura base de producción.
+
+> ⚠️ **Decisión (13-oct-2026): sin Docker, instalación nativa.** La versión anterior de este documento planteaba Docker Compose. Se cambió porque en este proyecto nunca se ha usado Docker ni en desarrollo local (todo corre nativo), hay prisa por lanzar, y a esta escala —un servidor, un operador— la ganancia de Docker no compensa la curva de aprendizaje ni el consumo extra de memoria en un droplet de 4 GB. Sigue siendo una decisión reversible más adelante: es un cambio de infraestructura, no de código.
 
 
 ## Justificación
 
-- **Cobertura geográfica:** DigitalOcean tiene datacenters en Nueva York (NYC1/NYC3), San Francisco (SFO3) y Toronto (TOR1) —los más cercanos/rápidos para México— y además en Europa (Ámsterdam AMS3, Fráncfort FRA1, Londres LON1) si en algún momento se necesita presencia o residencia de datos en la UE. Es el proveedor con más regiones útiles para este proyecto.
-- **Precio:** tras el ajuste de precios de Hetzner del 15-jun-2026, la ventaja de costo/rendimiento que Hetzner tenía sobre DigitalOcean prácticamente desapareció para specs equivalentes. Con precios similares, gana el proveedor con mejor cobertura y ecosistema.
-- **Ecosistema integrado:** Cloud Firewalls, Monitoring y alertas sin costo extra; snapshots y backups automáticos desde el mismo panel; y ruta natural de migración a **Managed MySQL** de DigitalOcean cuando el proyecto llegue a la fase de escalado (ver `02-base-datos-mysql.md`) sin cambiar de proveedor ni salir de la red privada (VPC).
-- **Crédito de arranque:** cuentas nuevas reciben ~$200 USD en créditos por 60 días, lo que cubre el staging y las primeras pruebas de deploy real sin gasto.
-
-**Alternativas y cuándo usarlas:**
-| Proveedor | Cuándo elegirlo |
-|---|---|
-| DigitalOcean | **Recomendado.** Mejor cobertura de regiones (US + EU), ecosistema integrado (VPC, firewall, DB gestionada), precio hoy equiparable a la competencia |
-| Hetzner | Si al comparar en el momento de contratar sigue siendo notablemente más barato para las mismas specs y la latencia/ubicación no es problema |
-| Hostinger VPS | Solo si ya tienes cuenta y quieres simplicidad extrema; menos flexible para Docker avanzado |
-
-> **Antes de contratar:** comparar el precio vigente de las specs objetivo (4 vCPU / 8 GB) en https://www.digitalocean.com/pricing/droplets y https://www.hetzner.com/cloud. Ambos proveedores ajustaron precios en 2026; la decisión está tomada sobre paridad de precio, así que vale la pena confirmarla con números del día.
+- **Cobertura geográfica:** DigitalOcean tiene datacenters en Nueva York (NYC1/2/3), San Francisco (SFO3) y Toronto (TOR1) —los más cercanos/rápidos para México— y además en Europa si en algún momento se necesita presencia ahí. Es el proveedor con más regiones útiles para este proyecto.
+- **Ecosistema integrado:** Cloud Firewalls, Monitoring y alertas sin costo extra; snapshots y backups automáticos desde el mismo panel.
+- **Lo que de verdad pasó al contratarlo (13-oct-2026):** NYC1 y NYC2 tenían los planes Basic más baratos bloqueados por falta de capacidad en el datacenter (no es un problema de cuenta ni de método de pago). **Toronto (TOR1) sí los tenía disponibles** — se usó esa región en su lugar. Sigue siendo Norteamérica, buena latencia hacia México.
 
 
 ## 💰 Precio y plan gratuito para desarrollo
 
-Un VPS **no es un servicio que tenga plan gratuito permanente** en ningún proveedor serio (DigitalOcean, Hetzner, Hostinger) — siempre se paga desde el primer minuto.
+Un VPS **no es un servicio que tenga plan gratuito permanente** — siempre se paga desde el primer minuto.
 
-| Opción | Costo | ¿Sirve para pruebas de desarrollo? |
-|---|---|---|
-| **Docker Compose local** (tu propia máquina) | $0 | ✅ Recomendado — así se desarrolla día a día, sin gastar nada; réplica exacta del stack (app, Nginx, MySQL, Redis) que luego corre en el VPS |
-| **DigitalOcean con crédito de bienvenida** | ~$200 USD gratis por 60 días en cuentas nuevas | ✅ Ideal para probar el deploy real (Docker, Nginx, SSL) y montar staging sin costo durante los primeros dos meses |
-| **DigitalOcean pagando (droplet de prueba)** | Facturación por hora, sin permanencia | ✅ Crear el droplet, probar el deploy, y **destruirlo** al terminar para dejar de pagar (un droplet apagado se sigue cobrando; hay que destruirlo) |
-
-**Recomendación:** desarrollar 100% local con Docker Compose (gratis) y usar el VPS real solo para staging/producción, no para desarrollo diario.
+**Recomendación:** desarrollar 100% local (como ya se hace) y usar el VPS real solo para producción.
 
 
-## Ruta de creación
+## Droplet contratado (13-oct-2026)
 
-1. Crear cuenta en https://cloud.digitalocean.com — verificar identidad (tarjeta o PayPal) y confirmar que se aplicó el crédito de bienvenida.
-2. Crear un **Project** nuevo (ej. `renta-casas-prod`) para separar recursos de prod y staging.
-3. Create → **Droplets**:
-   - Región: **NYC3** (o SFO3 si el tráfico viene más del occidente de México). Elegir una sola región y mantener ahí todos los recursos.
-   - Imagen: Ubuntu 24.04 LTS.
-   - Tipo: **Basic (Shared CPU) — 4 vCPU / 8 GB RAM / 160 GB SSD** para arranque; escalar (resize) a 8 vCPU / 16 GB si crece el tráfico.
-   - Autenticación: **llave SSH pública** (no uses contraseña).
-   - Habilitar **Backups** automáticos (+20% del costo del droplet, vale la pena).
-   - Habilitar **Monitoring** (gratis) para métricas de CPU/RAM/disco y alertas.
-4. Crear un **Cloud Firewall** (gratis) y asignarlo al droplet: permitir entrante solo 22 (SSH, idealmente solo desde tu IP), 80 y 443.
-5. Anotar la IP pública asignada (y considerar reservarla como **Reserved IP** para poder cambiar de droplet sin tocar el DNS).
+| | |
+|---|---|
+| Nombre | `rivierabnb-backend` |
+| Región | Toronto — TOR1 |
+| Imagen | Ubuntu 24.04 (LTS) x64 |
+| Plan | Basic, CPU Regular, **2 vCPU / 4 GB RAM / 80 GB SSD** — **$24 USD/mes** |
+| Backups automáticos | ❌ No activados (se puede activar después; +20% del costo) |
+| Managed Database | ❌ No — MySQL corre en el mismo droplet |
+| Monitoring (gratis) | ✅ Activado |
+| IPv6 | ❌ No activado |
+| Autenticación | Llave SSH (`aldrick-pc`), sin contraseña |
+| IP pública | `201.79.51.112` |
+| IP privada | `10.118.0.2` |
+
+Se eligió el plan de $24 en vez del de $48 (4 vCPU/8 GB) que sugería la versión anterior de este documento: para un sitio que todavía no tiene tráfico real, es gasto que no se estaba usando. El droplet se puede redimensionar hacia arriba después, sin perder datos, cuando haga falta.
+
+**Estado: backend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado.
+
+**Pendiente:**
+- En Google Cloud Console: agregar `201.79.51.112` a la restricción por IP de la llave de Google Maps (si está restringida solo a la IP local de desarrollo).
+- En Google Cloud Console: agregar `https://api.rivierabnb.com/api/v1/auth/google/callback` a los "Authorized redirect URIs" del cliente OAuth.
+- Frontend en Vercel — todavía no contratado.
+- Mercado Pago: `MERCADOPAGO_WEBHOOK_SECRET` sigue vacío (opcional — sin ella el webhook se procesa igual, solo sin verificar la firma de origen).
+- Stripe: sigue en credenciales de prueba, pendiente del alta de la empresa del cliente.
 
 
-## Contrato / plan recomendado
+## Bitácora de configuración
 
-- **Basic Droplet 4 vCPU / 8 GB / 160 GB SSD**: suficiente para MySQL + Laravel + Redis en fase inicial (100–1,000 usuarios). Precio de lista de referencia ~$48 USD/mes — **verificar el vigente en el panel antes de contratar**.
-- Opción de arranque más económica si el presupuesto aprieta: 2 vCPU / 4 GB (~$24 USD/mes), con resize en caliente cuando MySQL empiece a apretar.
-- Backups automáticos: +20% del precio base del droplet.
-- Transferencia de datos incluida generosa (varios TB/mes en estos planes); el excedente se cobra por GB — irrelevante para este proyecto porque las imágenes salen por Cloudflare R2, no por el droplet.
-- Sin permanencia forzosa, facturación por hora con tope mensual, resize sin perder datos (el resize de disco es irreversible: se puede subir, no bajar).
-- SLA de disponibilidad de Droplets: 99.99% según el acuerdo de nivel de servicio de DigitalOcean — revisar el texto vigente antes de comprometerlo con el cliente.
+Cada comando, en el orden real en que se corrió, con qué hace y por qué. Todo se ejecuta conectado por SSH como `root`, salvo que se indique otra cosa.
 
-
-## Configuración inicial del servidor
+### Llave SSH (en la máquina local, antes de crear el droplet)
 
 ```bash
-# Conexión
-ssh root@<IP_SERVIDOR>
+ssh-keygen
+```
+Genera el par de llaves (`id_ed25519` / `id_ed25519.pub`) que después se sube a DigitalOcean al crear el droplet, para entrar sin contraseña. Sin contraseña en la llave: es la máquina propia del desarrollador, no un servidor compartido.
 
-# Actualizar sistema
+### Conexión inicial
+
+```bash
+ssh root@201.79.51.112
+```
+Primera conexión: pide confirmar la huella digital del servidor (`yes`). Entra directo porque la llave pública ya quedó asociada al droplet desde su creación.
+
+### Actualizar el sistema
+
+```bash
 apt update && apt upgrade -y
+```
+`update` refresca la lista de paquetes disponibles; `upgrade` instala las versiones más nuevas de lo que ya viene en Ubuntu. Un droplet recién creado casi siempre tiene paquetes desactualizados — hacerlo primero evita instalar software nuevo sobre una base vieja.
 
-# Crear usuario no-root con sudo
+⚠️ Si avisa "Pending kernel upgrade", hay que reiniciar (ver abajo) antes de seguir — si no, el servidor sigue corriendo el kernel viejo hasta el próximo reinicio, que podría pasar en un mal momento (ej. en medio de un despliegue).
+
+### Instalar el stack (Nginx, PHP, MySQL)
+
+```bash
+apt install -y nginx mysql-server php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip php8.3-bcmath php8.3-gd php8.3-exif php8.3-intl php8.3-redis unzip git curl software-properties-common
+```
+
+| Paquete | Para qué |
+|---|---|
+| `nginx` | Servidor web: recibe las peticiones HTTP/HTTPS y se las pasa a PHP-FPM |
+| `mysql-server` | Base de datos |
+| `php8.3-fpm` | El intérprete de PHP corriendo como servicio, el que de verdad ejecuta el Laravel |
+| `php8.3-cli` | PHP por línea de comandos — para `artisan`, `composer`, el worker de colas |
+| `php8.3-mysql` | Conexión de PHP a MySQL |
+| `php8.3-mbstring`, `php8.3-xml`, `php8.3-curl`, `php8.3-bcmath`, `php8.3-intl` | Extensiones que Laravel y sus dependencias dan por hechas |
+| `php8.3-zip`, `php8.3-gd`, `php8.3-exif` | Las tres que ya habían dado problemas antes en desarrollo local (procesar imágenes y archivos comprimidos) — se instalan desde el principio para no repetir ese error |
+| `php8.3-redis` | Por si se usa Redis para colas/caché más adelante; no cuesta nada tenerlo listo |
+| `unzip`, `git`, `curl` | Herramientas básicas para desplegar el código |
+| `software-properties-common` | Para poder agregar repositorios de paquetes adicionales si hiciera falta |
+
+Ubuntu 24.04 ya trae PHP 8.3 en sus repositorios por defecto — no hizo falta agregar el PPA de Ondřej Surý que usan versiones más viejas de Ubuntu.
+
+### Reiniciar para aplicar el kernel nuevo
+
+```bash
+reboot
+```
+Aplica la actualización de kernel detectada en el `apt upgrade`. Corta la conexión SSH — hay que esperar ~30 segundos y volver a conectarse con el mismo `ssh root@201.79.51.112`.
+
+### Composer
+
+```bash
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+```
+Lo instala como `composer`, disponible en cualquier carpeta.
+
+### Usuario `deploy` (sin privilegios de root)
+
+```bash
 adduser deploy
 usermod -aG sudo deploy
+mkdir -p /home/deploy/.ssh
+cp /root/.ssh/authorized_keys /home/deploy/.ssh/
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+chmod 600 /home/deploy/.ssh/authorized_keys
+```
+El código y los procesos de la aplicación corren como `deploy`, nunca como `root` — si algo se compromete, el daño queda limitado a lo que ese usuario puede tocar. Se le copia la misma llave SSH del operador para poder entrar como `deploy` sin generar una llave aparte para eso.
 
-# Instalar Docker y Docker Compose
-curl -fsSL https://get.docker.com | sh
-usermod -aG docker deploy
+### Asegurar MySQL
 
-# Firewall a nivel de SO (UFW) como capa adicional al Cloud Firewall de DigitalOcean
+```bash
+mysql_secure_installation
+```
+Quita usuarios anónimos, desactiva el login remoto de `root`, borra la base de datos `test`. En Ubuntu, `root` de MySQL usa autenticación por socket (entra por ser `root` del sistema operativo, no por contraseña) — es el comportamiento esperado, no hace falta ponerle contraseña.
+
+### Firewall (UFW)
+
+```bash
 ufw allow OpenSSH
 ufw allow 80
 ufw allow 443
 ufw enable
-
-# Fail2ban para proteger SSH de fuerza bruta
-apt install fail2ban -y
 ```
+Solo deja pasar SSH, HTTP y HTTPS — todo lo demás queda bloqueado por defecto.
+
+### Base de datos y usuario de la aplicación
+
+```bash
+mysql -e "CREATE DATABASE rivierabnb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE USER 'rivierabnb'@'localhost' IDENTIFIED BY '<contraseña>';"
+mysql -e "GRANT ALL PRIVILEGES ON rivierabnb.* TO 'rivierabnb'@'localhost';"
+mysql -e "FLUSH PRIVILEGES;"
+```
+Un usuario de MySQL dedicado a la aplicación, nunca `root` de MySQL para esto.
+
+### Clonar el código (como `deploy`, con Deploy Key de solo lectura)
+
+```bash
+mkdir -p /var/www/rivierabnb-backend        # como root
+chown deploy:www-data /var/www/rivierabnb-backend
+
+su - deploy
+ssh-keygen -t ed25519 -C "rivierabnb-backend-deploy" -f ~/.ssh/deploy_key -N ""
+cat ~/.ssh/deploy_key.pub   # se agrega en GitHub → repo → Settings → Deploy keys (solo lectura)
+
+cat >> ~/.ssh/config << 'EOF'
+Host github.com
+  IdentityFile ~/.ssh/deploy_key
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+
+git clone git@github.com:EmilianoChavarria/Casas_back.git /var/www/rivierabnb-backend
+```
+Una Deploy Key en vez de las credenciales personales del desarrollador: de solo lectura, específica de este repo, y se puede revocar sin afectar ninguna otra cosa.
+
+### Dependencias de la aplicación
+
+```bash
+cd /var/www/rivierabnb-backend
+composer install --no-dev --optimize-autoloader
+```
+
+### `.env` de producción
+
+Se escribió a mano con los valores reales (ver la plantilla completa en el historial de configuración — no se repite aquí por longitud). Diferencias clave frente al `.env` de desarrollo:
+
+- `APP_ENV=production`, `APP_DEBUG=false` — nunca exponer detalles internos en un error público.
+- `APP_KEY` generada de nuevo en el servidor (`php artisan key:generate`), nunca reutilizada de desarrollo.
+- `SESSION_DOMAIN=.rivierabnb.com` y `SANCTUM_STATEFUL_DOMAINS` con los dominios reales — necesario para que la cookie de sesión funcione entre el frontend (Vercel) y este backend.
+- `SESSION_SECURE_COOKIE=true` — exige HTTPS.
+- Credenciales **reales** de Mercado Pago (cuenta verificada de Omar Carrillo Cen), `MERCADOPAGO_SANDBOX=false`, `MERCADOPAGO_WEBHOOK_BASE_URL=https://api.rivierabnb.com`.
+- Ya no incluye variables de Clip — ese proveedor se quitó del código.
+
+### Permisos, migraciones y datos base
+
+```bash
+sudo chown -R deploy:www-data /var/www/rivierabnb-backend
+sudo chmod -R 775 storage bootstrap/cache
+
+php artisan migrate --force
+php artisan db:seed --force
+```
+`storage/` y `bootstrap/cache/` necesitan que PHP-FPM (que corre como `www-data`) pueda escribir ahí — logs, caché de vistas, sesiones. `--force` es obligatorio porque en producción Laravel pide confirmación interactiva, que se queda esperando para siempre en un script o una terminal no interactiva.
+
+El sistema arranca sin casas ni reservas a propósito — eso se captura desde el panel.
+
+### Primer usuario administrador
+
+Sin comando dedicado — se crea a mano:
+
+```bash
+php artisan tinker
+```
+```php
+$role = App\Models\Role::where('slug', 'admin')->first();
+App\Models\User::create([
+    'role_id' => $role->id,
+    'name' => '...',
+    'email' => '...',
+    'password' => bcrypt('...'),
+    'is_active' => true,
+    'email_verified_at' => now(),
+]);
+```
+
+### Nginx
+
+```bash
+sudo tee /etc/nginx/sites-available/rivierabnb-backend > /dev/null << 'EOF'
+server {
+    listen 80;
+    server_name api.rivierabnb.com;
+    root /var/www/rivierabnb-backend/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    client_max_body_size 20M;
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/rivierabnb-backend /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### SSL (Let's Encrypt / Certbot)
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.rivierabnb.com
+```
+Certbot edita la configuración de Nginx solo, agrega el certificado, redirige HTTP → HTTPS, y programa la renovación automática — no hay que hacer nada más para que el certificado se mantenga vigente.
+
+### Worker de colas (systemd)
+
+```bash
+sudo tee /etc/systemd/system/rivierabnb-queue.service > /dev/null << 'EOF'
+[Unit]
+Description=RivieraBnb queue worker
+After=network.target mysql.service
+
+[Service]
+User=deploy
+Group=www-data
+Restart=always
+ExecStart=/usr/bin/php /var/www/rivierabnb-backend/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable rivierabnb-queue
+sudo systemctl start rivierabnb-queue
+```
+`Restart=always`: si el proceso muere por cualquier motivo, systemd lo vuelve a levantar solo, y arranca automático si se reinicia el servidor. `--max-time=3600`: el worker se reinicia solo cada hora, para no acumular memoria indefinidamente.
+
+### Scheduler (cron)
+
+```bash
+(crontab -l 2>/dev/null; echo "* * * * * cd /var/www/rivierabnb-backend && php artisan schedule:run >> /dev/null 2>&1") | crontab -
+```
+Corre cada minuto; Laravel decide internamente qué tarea programada le toca ejecutar en ese momento (expirar reservas sin pagar, recordatorios, tasas de cambio, etc.).
 
 
 ## Variables/credenciales a resguardar en GitHub Secrets
 
+Pendiente hasta que se arme el flujo de despliegue (pull del código + migraciones + reinicio de PHP-FPM, probablemente disparado por un script o por GitHub Actions vía SSH — sin Docker de por medio).
+
 ```
-VPS_HOST=<ip o dominio>
-VPS_USER=deploy
-VPS_SSH_KEY=<llave privada del deploy>
+VPS_HOST=201.79.51.112
+VPS_USER=<usuario de despliegue, pendiente de crear — ver siguiente sección>
+VPS_SSH_KEY=<llave privada del usuario de despliegue>
 ```
 
 
 ## Costos aproximados (mensual)
 
-- Droplet 4 vCPU/8GB + backups automáticos (+20%): estimar ~$58 USD/mes tomando el precio de lista de referencia — **verificar el precio actual en https://www.digitalocean.com/pricing/droplets**, que es el número que manda.
-- Arranque económico 2 vCPU/4GB + backups: ~$29 USD/mes.
-- Escalar a 8 vCPU/16GB cuando el tráfico lo requiera: aproximadamente el doble del plan de 4/8.
-- $0/mes durante los primeros 60 días si se aprovecha el crédito de bienvenida, y $0/mes durante el desarrollo si se usa Docker Compose local (ver sección de plan gratuito arriba).
+- Droplet 2 vCPU / 4 GB: **$24 USD/mes**, sin backups automáticos.
+- Si más adelante se activan los backups automáticos: +20%, ≈ $29 USD/mes.
+- Transferencia de datos incluida generosa; irrelevante aquí porque las imágenes salen por Cloudflare R2, no por el droplet.
 
 Referenciado desde: `../arquitectura/`, sección 8 y 10.
