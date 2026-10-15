@@ -1,8 +1,8 @@
 # Servicio: Autenticación con Google (OAuth 2.0)
 
-> ✅ **En producción (14-oct-2026), estado "Prueba" todavía.** Cliente OAuth creado en el mismo proyecto `RivieraBnb` que Maps. Pantalla de consentimiento configurada con los tres scopes no sensibles, dominio `rivierabnb.com` autorizado. Redirección probada en vivo (`/auth/google/redirect` responde 302 hacia `accounts.google.com` con el `client_id` correcto).
+> ✅ **En producción (14-oct-2026), app publicada ("En producción", sin tope de 100 usuarios).** Cliente OAuth creado en el mismo proyecto `RivieraBnb` que Maps. Pantalla de consentimiento configurada con los tres scopes no sensibles, dominio `rivierabnb.com` autorizado. Página de política de privacidad en vivo en `https://www.rivierabnb.com/legal/privacidad`, lo que destrabó el botón "Publicar app". Redirección probada en vivo (`/auth/google/redirect` responde 302 hacia `accounts.google.com`).
 >
-> **Pendiente: publicar la app ("Público" → *Publicar app*).** Google lo bloquea porque exige una URL de política de privacidad pública, y el frontend todavía no estaba en línea cuando se configuró esto. Hacerlo en cuanto `https://rivierabnb.com/privacidad` exista de verdad — mientras tanto el login funciona igual para usuarios de prueba agregados a mano, solo no está abierto a cualquier cuenta de Google.
+> Queda una franja informativa en la consola invitando a la **verificación de marca** (para mostrar el logo/nombre en vez del dominio en crudo) — es opcional, no bloquea el login, y exige verificar el dominio en Google Search Console si algún día se quiere tramitar.
 
 ## ¿Para qué se usa?
 

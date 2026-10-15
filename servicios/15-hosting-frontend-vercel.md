@@ -68,7 +68,6 @@ El DNS de `rivierabnb.com` vive en **Cloudflare** (ver `09-cloudflare-dns-cdn.md
 
 ## Pendiente
 
-- Publicar la app de Google OAuth ahora que el sitio ya tiene dominio real — requiere la página de política de privacidad en `https://rivierabnb.com/privacidad` (ver `14-auth-google-oauth.md`).
 - `SENTRY_AUTH_TOKEN` sigue vacío — sin source maps reales en los stack traces de Sentry hasta que se genere.
 
 Referenciado desde: `../arquitectura/08-infraestructura-y-despliegue-en-produccion.md` (sección 8.1, donde ya se recomendaba Vercel para el frontend).

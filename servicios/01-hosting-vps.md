@@ -42,8 +42,7 @@ Se eligió el plan de $24 en vez del de $48 (4 vCPU/8 GB) que sugería la versi�
 **Estado (14-oct-2026): backend y frontend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado. Frontend en `https://rivierabnb.com` (Vercel, ver `15-hosting-frontend-vercel.md`), conectado al backend real. Google Maps y Google OAuth con proyecto de Google Cloud nuevo, configurados y probados (ver `08-google-maps.md` y `14-auth-google-oauth.md`).
 
 **Pendiente:**
-- Publicar la app de Google OAuth (bloqueado hasta tener `https://rivierabnb.com/privacidad` en línea — ver `14-auth-google-oauth.md`).
-- Mergear el PR de esta documentación.
+- Mergear los PRs de documentación (backend/VPS y frontend).
 - Mercado Pago: `MERCADOPAGO_WEBHOOK_SECRET` sigue vacío (opcional — sin ella el webhook se procesa igual, solo sin verificar la firma de origen).
 - Stripe: sigue en credenciales de prueba, pendiente del alta de la empresa del cliente.
 
