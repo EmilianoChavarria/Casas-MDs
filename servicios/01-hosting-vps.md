@@ -305,15 +305,35 @@ sudo systemctl start rivierabnb-queue
 Corre cada minuto; Laravel decide internamente qué tarea programada le toca ejecutar en ese momento (expirar reservas sin pagar, recordatorios, tasas de cambio, etc.).
 
 
-## Variables/credenciales a resguardar en GitHub Secrets
+## Despliegue automático (16-oct-2026)
 
-Pendiente hasta que se arme el flujo de despliegue (pull del código + migraciones + reinicio de PHP-FPM, probablemente disparado por un script o por GitHub Actions vía SSH — sin Docker de por medio).
+> ✅ **Implementado.** GitHub Actions despliega solo al VPS cuando el CI de `Casas_back` termina bien en `main` — ver el workflow `deploy.yml` del repo y el PR [#89](https://github.com/EmilianoChavarria/Casas_back/pull/89). Probado de punta a punta: primer despliegue automático exitoso el 16-oct-2026.
 
+Secrets del repo `Casas_back` (GitHub → Settings → Secrets and variables → Actions):
 ```
-VPS_HOST=201.79.51.112
-VPS_USER=<usuario de despliegue, pendiente de crear — ver siguiente sección>
-VPS_SSH_KEY=<llave privada del usuario de despliegue>
+DEPLOY_HOST=201.79.51.112
+DEPLOY_USER=deploy
+DEPLOY_SSH_KEY=<llave privada dedicada, generada solo para esto — no es la llave personal del operador ni la Deploy Key de solo lectura que clona el repo>
 ```
+
+La llave pública correspondiente está en `authorized_keys` del usuario `deploy` en el servidor. El `deploy` también tiene un permiso de `sudo` acotado a un solo comando (nada más):
+```
+# /etc/sudoers.d/deploy-php-reload
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm
+```
+El worker de colas se reinicia sin sudo: `php artisan queue:restart` solo le avisa al proceso que termine su job actual y salga — `Restart=always` de systemd lo vuelve a levantar con el código nuevo.
+
+### Límites de subida de archivos (16-oct-2026)
+
+> ⚠️ **Ajuste necesario, no viene así por defecto.** Ubuntu instala PHP con `upload_max_filesize=2M`, muy por debajo de los 5MB que el código permite para fotos de casas/zonas — cualquier foto de celular normal lo superaba y fallaba con el mensaje crudo `validation.uploaded` (PHP rechaza el archivo antes de que Laravel llegue a revisarlo).
+
+Editar **el `php.ini` de FPM, no el de CLI** (son archivos distintos):
+```bash
+sed -i 's/^upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/8.3/fpm/php.ini
+sed -i 's/^post_max_size = .*/post_max_size = 12M/' /etc/php/8.3/fpm/php.ini
+systemctl reload php8.3-fpm
+```
+`post_max_size` queda arriba de `upload_max_filesize` a propósito (el POST completo incluye el archivo más el resto del formulario). Combina con el límite de 20MB que ya tiene Nginx (`client_max_body_size`, ver la sección de Nginx arriba).
 
 
 ## Costos aproximados (mensual)
