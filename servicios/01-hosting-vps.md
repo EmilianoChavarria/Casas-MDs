@@ -39,12 +39,10 @@ Un VPS **no es un servicio que tenga plan gratuito permanente** — siempre se p
 
 Se eligió el plan de $24 en vez del de $48 (4 vCPU/8 GB) que sugería la versión anterior de este documento: para un sitio que todavía no tiene tráfico real, es gasto que no se estaba usando. El droplet se puede redimensionar hacia arriba después, sin perder datos, cuando haga falta.
 
-**Estado: backend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado.
+**Estado (14-oct-2026): backend y frontend en producción, funcionando.** `https://api.rivierabnb.com` responde con HTTPS, base de datos migrada y con catálogos sembrados, worker de colas y scheduler corriendo como servicios del sistema, usuario administrador creado. Frontend en `https://rivierabnb.com` (Vercel, ver `15-hosting-frontend-vercel.md`), conectado al backend real. Google Maps y Google OAuth con proyecto de Google Cloud nuevo, configurados y probados (ver `08-google-maps.md` y `14-auth-google-oauth.md`).
 
 **Pendiente:**
-- En Google Cloud Console: agregar `201.79.51.112` a la restricción por IP de la llave de Google Maps (si está restringida solo a la IP local de desarrollo).
-- En Google Cloud Console: agregar `https://api.rivierabnb.com/api/v1/auth/google/callback` a los "Authorized redirect URIs" del cliente OAuth.
-- Frontend en Vercel — todavía no contratado.
+- Mergear los PRs de documentación (backend/VPS y frontend).
 - Mercado Pago: `MERCADOPAGO_WEBHOOK_SECRET` sigue vacío (opcional — sin ella el webhook se procesa igual, solo sin verificar la firma de origen).
 - Stripe: sigue en credenciales de prueba, pendiente del alta de la empresa del cliente.
 
@@ -307,15 +305,35 @@ sudo systemctl start rivierabnb-queue
 Corre cada minuto; Laravel decide internamente qué tarea programada le toca ejecutar en ese momento (expirar reservas sin pagar, recordatorios, tasas de cambio, etc.).
 
 
-## Variables/credenciales a resguardar en GitHub Secrets
+## Despliegue automático (16-oct-2026)
 
-Pendiente hasta que se arme el flujo de despliegue (pull del código + migraciones + reinicio de PHP-FPM, probablemente disparado por un script o por GitHub Actions vía SSH — sin Docker de por medio).
+> ✅ **Implementado.** GitHub Actions despliega solo al VPS cuando el CI de `Casas_back` termina bien en `main` — ver el workflow `deploy.yml` del repo y el PR [#89](https://github.com/EmilianoChavarria/Casas_back/pull/89). Probado de punta a punta: primer despliegue automático exitoso el 16-oct-2026.
 
+Secrets del repo `Casas_back` (GitHub → Settings → Secrets and variables → Actions):
 ```
-VPS_HOST=201.79.51.112
-VPS_USER=<usuario de despliegue, pendiente de crear — ver siguiente sección>
-VPS_SSH_KEY=<llave privada del usuario de despliegue>
+DEPLOY_HOST=201.79.51.112
+DEPLOY_USER=deploy
+DEPLOY_SSH_KEY=<llave privada dedicada, generada solo para esto — no es la llave personal del operador ni la Deploy Key de solo lectura que clona el repo>
 ```
+
+La llave pública correspondiente está en `authorized_keys` del usuario `deploy` en el servidor. El `deploy` también tiene un permiso de `sudo` acotado a un solo comando (nada más):
+```
+# /etc/sudoers.d/deploy-php-reload
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm
+```
+El worker de colas se reinicia sin sudo: `php artisan queue:restart` solo le avisa al proceso que termine su job actual y salga — `Restart=always` de systemd lo vuelve a levantar con el código nuevo.
+
+### Límites de subida de archivos (16-oct-2026)
+
+> ⚠️ **Ajuste necesario, no viene así por defecto.** Ubuntu instala PHP con `upload_max_filesize=2M`, muy por debajo de los 5MB que el código permite para fotos de casas/zonas — cualquier foto de celular normal lo superaba y fallaba con el mensaje crudo `validation.uploaded` (PHP rechaza el archivo antes de que Laravel llegue a revisarlo).
+
+Editar **el `php.ini` de FPM, no el de CLI** (son archivos distintos):
+```bash
+sed -i 's/^upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/8.3/fpm/php.ini
+sed -i 's/^post_max_size = .*/post_max_size = 12M/' /etc/php/8.3/fpm/php.ini
+systemctl reload php8.3-fpm
+```
+`post_max_size` queda arriba de `upload_max_filesize` a propósito (el POST completo incluye el archivo más el resto del formulario). Combina con el límite de 20MB que ya tiene Nginx (`client_max_body_size`, ver la sección de Nginx arriba).
 
 
 ## Costos aproximados (mensual)

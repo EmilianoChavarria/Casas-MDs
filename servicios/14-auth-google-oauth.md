@@ -1,5 +1,9 @@
 # Servicio: Autenticación con Google (OAuth 2.0)
 
+> ✅ **En producción (14-oct-2026), app publicada ("En producción", sin tope de 100 usuarios).** Cliente OAuth creado en el mismo proyecto `RivieraBnb` que Maps. Pantalla de consentimiento configurada con los tres scopes no sensibles, dominio `rivierabnb.com` autorizado. Página de política de privacidad en vivo en `https://www.rivierabnb.com/legal/privacidad`, lo que destrabó el botón "Publicar app". Redirección probada en vivo (`/auth/google/redirect` responde 302 hacia `accounts.google.com`).
+>
+> Queda una franja informativa en la consola invitando a la **verificación de marca** (para mostrar el logo/nombre en vez del dominio en crudo) — es opcional, no bloquea el login, y exige verificar el dominio en Google Search Console si algún día se quiere tramitar.
+
 ## ¿Para qué se usa?
 
 1. **"Continuar con Google" en el registro e inicio de sesión del huésped** — sin llenar formulario ni recordar otra contraseña.
