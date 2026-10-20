@@ -23,6 +23,7 @@ Decisiones que **no se pueden tomar desde el lado técnico** porque dependen del
 | D15 | ¿Habrá chat en las experiencias, y con quién: guía o administrador? | ⏳ Pendiente | Mensajes de experiencias, panel del guía |
 | D16 | Cuando entra una reserva, ¿se le avisa también al co-anfitrión? | ⏳ Pendiente | Aviso por correo al dueño externo |
 | D17 | Modo de pago manual por link (Mercado Pago), mientras no hay Stripe en producción | ✅ Resuelta · temporal | Checkout, correos de reserva, panel admin, reportes de cobro |
+| D18 | Reservas de último momento: ¿periodo de gracia para cancelar? | ⏳ Pendiente | Política de cancelación, aviso en el checkout |
 
 ---
 
@@ -1055,6 +1056,88 @@ cobrado por Mercado Pago, que queda en el historial para siempre.
   API. Si el cliente quiere que el reporte la refleje con exactitud, hay un
   campo para anotarla a mano al confirmar cada pago; si no se usa, el
   reporte asume que no cobra nada, que es la cifra más simple.
+
+---
+## D18 — Reservas de último momento: ¿periodo de gracia para cancelar?
+
+**Estado:** ⏳ Pendiente (20-oct-2026) · Relacionada con **D7**, **D17**
+
+### Contexto
+
+La política de cancelación cuenta el tiempo **desde que el huésped cancela
+hasta la medianoche del día de llegada**, y aplica el primer escalón que se
+cumpla. La política general de hoy ("Moderada", provisional según D7) tiene:
+
+| Si cancela con… | Se le devuelve |
+|---|---|
+| 30 días o más antes de la llegada | 100% |
+| 7 días o más | 50% |
+| Menos de 7 días | 0% |
+
+**El caso que motiva la duda:** alguien reserva el **lunes para el viernes**.
+Desde el momento en que reserva ya faltan menos de 7 días, así que **no tiene
+ningún reembolso**, aunque cancele un minuto después de reservar (por
+ejemplo, porque se equivocó de fechas o reservó dos veces).
+
+Con las otras políticas:
+
+| Política | Reserva el lunes para el viernes |
+|---|---|
+| Flexible (100% con 7 días, 50% con 2 días) | 50% hasta el miércoles; después, 0% |
+| Estricta (100% con 60 días) | 0% desde el primer minuto |
+
+El huésped sí ve la política antes de pagar ("Qué debes saber" en la ficha y
+la casilla de aceptación en el checkout), pero **nada le advierte que con las
+fechas que eligió ya no es reembolsable**.
+
+**Cómo lo resuelve Airbnb:** con un periodo de gracia. En muchas de sus
+políticas, si el huésped cancela poco después de reservar, se le devuelve
+todo aunque la llegada esté cerca, con alguna condición para que no se
+abuse.
+
+### La pregunta concreta
+
+> 1. ¿Quiere un **periodo de gracia** después de reservar?
+>    - **No.** Se aplica la política tal cual: reservar cerca de la fecha es
+>      reservar sin reembolso. Es como está hoy.
+>    - **Sí, igual para todas las políticas.** Por ejemplo: *100% si cancela
+>      dentro de las primeras 24 horas después de reservar, siempre que
+>      falten al menos 48 horas para la llegada.*
+>    - **Sí, configurable en cada política.** Unas lo tienen y otras no (la
+>      Estricta, por ejemplo, podría no tenerlo).
+>
+>    Si es sí: ¿cuántas horas de gracia, y con cuánta anticipación mínima a
+>    la llegada?
+>
+> 2. ¿Se le **avisa al huésped al pagar** cuando con sus fechas el reembolso
+>    ya es parcial o nulo? Por ejemplo: *"Si cancelas, no hay reembolso"* o
+>    *"Si cancelas hoy, se te devuelve el 50%"*.
+
+### Lo que hay que saber antes de responder
+
+**La condición de anticipación mínima importa.** Sin ella, alguien puede
+reservar hoy para mañana, bloquear la casa y cancelar gratis a las 23 horas:
+la casa se queda sin venderse justo cuando ya es difícil revenderla.
+
+**Lo ya reservado no cambia.** Cada reserva guarda la política que aceptó el
+huésped al reservar. Un periodo de gracia nuevo aplicaría solo a las
+reservas hechas después de activarlo.
+
+**Mientras se cobre por Mercado Pago (D17)** la devolución se hace por
+transferencia y se registra a mano en la reserva. El periodo de gracia solo
+cambiaría el monto que el sistema le propone al administrador al aprobar la
+cancelación; no hace que el dinero se devuelva solo.
+
+**Textos legales (D8).** Si se agrega, el periodo de gracia tiene que
+aparecer en los términos y condiciones, igual que el resto de la política.
+
+### Qué se bloquea mientras no se responda
+
+**Nada.** El sistema opera con la política tal cual, sin periodo de gracia.
+
+Lo que se decida es **trabajo pequeño**: un campo más en cada política
+(horas de gracia y anticipación mínima), la regla en el cálculo del
+reembolso y, si se quiere el aviso, una línea en el checkout.
 
 ---
 ## Cómo usar este documento
