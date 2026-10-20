@@ -71,3 +71,7 @@ El DNS de `rivierabnb.com` vive en **Cloudflare** (ver `09-cloudflare-dns-cdn.md
 - `SENTRY_AUTH_TOKEN` sigue vacío — sin source maps reales en los stack traces de Sentry hasta que se genere.
 
 Referenciado desde: `../arquitectura/08-infraestructura-y-despliegue-en-produccion.md` (sección 8.1, donde ya se recomendaba Vercel para el frontend).
+
+## Analítica
+
+El plan Pro incluye Web Analytics y Speed Insights. Cómo se usan, qué se mide y qué se cuidó de privacidad: ver [`16-analitica-trafico.md`](16-analitica-trafico.md).
