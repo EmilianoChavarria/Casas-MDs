@@ -57,3 +57,5 @@ Un solo `.md` por servicio, con todas sus secciones (¿para qué se usa?, justif
 | 12 | WebSockets / Tiempo Real — Laravel Reverb | [`12-websockets-reverb.md`](servicios/12-websockets-reverb.md) | ✅ Self-hosted gratis (no requiere cuenta externa) |
 | 13 | Tiles de mapa — MapTiler / Stadia / Geoapify | [`13-mapas-tiles.md`](servicios/13-mapas-tiles.md) | ✅ Free tier con API key ⚠️ tiles públicos de OSM solo en local |
 | 14 | Autenticación con Google (OAuth 2.0) | [`14-auth-google-oauth.md`](servicios/14-auth-google-oauth.md) | ✅ Gratis siempre, sin cuota ⚠️ publicar la app o tope de 100 usuarios |
+| 15 | Hosting del frontend — Vercel | [`15-hosting-frontend-vercel.md`](servicios/15-hosting-frontend-vercel.md) | ✅ Plan Hobby gratis (en producción se usa Pro) |
+| 16 | Analítica de tráfico — Vercel Web Analytics y Speed Insights | [`16-analitica-trafico.md`](servicios/16-analitica-trafico.md) | ✅ Incluido en el plan de Vercel (en local no mide) |
