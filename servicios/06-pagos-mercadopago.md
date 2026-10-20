@@ -36,6 +36,74 @@
 
 ---
 
+## ⏳ Producción: estado y pendientes (20-oct-2026)
+
+Revisado en el servidor (`deploy@201.79.51.112`, `/var/www/rivierabnb-backend`)
+sin mostrar ninguna clave:
+
+| Qué | Estado |
+|---|---|
+| `MERCADOPAGO_ACCESS_TOKEN` de **producción** (empieza con `APP_USR-`, no `TEST-`) | ✅ |
+| `MERCADOPAGO_SANDBOX=false` | ✅ |
+| `MERCADOPAGO_WEBHOOK_BASE_URL=https://api.rivierabnb.com` | ✅ |
+| `MERCADOPAGO_WEBHOOK_SECRET` | ⏳ **vacío** |
+| Interruptor `payments.manual_mode` en la base | ❌ **apagado**: `GET /api/v1/payment-settings` responde `manual_mode: false` |
+
+⚠️ **Mientras el interruptor esté apagado, el sitio ofrece pago con Stripe**,
+que sigue en modo de pruebas: un huésped real no podría pagar de verdad.
+
+### Pendientes (hacerlos con el cliente)
+
+**1. Encender Mercado Pago en producción**
+
+```bash
+ssh deploy@201.79.51.112
+cd /var/www/rivierabnb-backend
+php artisan tinker --execute="App\Models\Configuration::set('payments.manual_mode','true','boolean');"
+php artisan cache:clear
+```
+
+Comprobar en https://api.rivierabnb.com/api/v1/payment-settings que diga
+`"manual_mode":true`.
+
+**2. Poner el secreto del webhook** (no bloquea los cobros: el sistema vuelve a
+consultar cada pago a la API de Mercado Pago antes de darlo por bueno; el
+secreto agrega la verificación de la firma `x-signature`)
+
+1. Mercado Pago Developers → **Tus integraciones** → la aplicación → **Webhooks**.
+2. Confirmar la URL `https://api.rivierabnb.com/api/v1/webhooks/mercadopago`
+   con el evento **Pagos** marcado.
+3. Copiar la **clave secreta** y pegarla en el `.env` del servidor
+   (`nano .env`, línea `MERCADOPAGO_WEBHOOK_SECRET=`). No compartirla por chat.
+4. Aplicar:
+   ```bash
+   php artisan config:cache
+   php artisan queue:restart
+   ```
+
+**3. Prueba con dinero real**
+
+- **No bajar el precio de una casa real**: alguien podría reservarla barata
+  durante la prueba. Dar de alta una **casa de prueba**, publicada solo durante
+  la prueba, a **unos $20 MXN por noche**.
+- Orden:
+  1. Reservar como huésped (cuenta real, correo propio).
+  2. Pagar con tarjeta propia por el link de Mercado Pago.
+  3. En el panel, **"Confirmar pago de Mercado Pago"** en la reserva.
+  4. Revisar que llegue el correo de confirmación y que el cobro salga en
+     **Reportes → Caja**.
+- **Devolución:** hacerla desde el panel de Mercado Pago. Para registrarla en el
+  sistema (y que cuente en los reportes) primero hay que fusionar
+  `Casas_back#100` y luego `Casas_front#80` (solicitud de cancelación y
+  devoluciones registradas a mano).
+- **Comisión:** Mercado Pago cobra la suya y normalmente no la regresa al
+  reembolsar. Con $20 son centavos.
+- **Al terminar:** archivar la casa de prueba y decidir si la reserva y el pago
+  de prueba se quedan en los reportes (anotando que fue prueba) o se marcan
+  para que no cuenten.
+
+---
+
 ## ¿Para qué se usa?
 
 Método de pago complementario a Stripe (ver `05-pagos-stripe.md`), orientado al mercado mexicano: tarjetas nacionales con mejor tasa de aprobación, OXXO (pago en efectivo) y SPEI (transferencia bancaria).

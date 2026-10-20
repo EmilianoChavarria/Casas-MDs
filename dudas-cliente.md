@@ -1043,6 +1043,10 @@ cobrado por Mercado Pago, que queda en el historial para siempre.
 
 ### Lo que queda pendiente de verificar
 
+> ⏳ **20-oct-2026:** en producción el interruptor `payments.manual_mode` está
+> **apagado**, falta el secreto del webhook y falta la prueba con dinero real.
+> Pasos en [`servicios/06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md#-producción-estado-y-pendientes-20-oct-2026).
+
 - La integración se probó en el sandbox de Mercado Pago con un vendedor y un
   comprador de prueba, no en producción: antes de activar el modo con dinero
   real hace falta una cuenta de Mercado Pago con **credenciales de
