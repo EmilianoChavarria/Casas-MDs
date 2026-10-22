@@ -66,9 +66,20 @@ No es un bug del sitio; hace falta una tarjeta/cuenta de otra persona para
 probar, o usar ya las credenciales reales del negocio en vez de unas de
 prueba personales.
 
-**Pendiente:** la devolución de esta prueba se registra desde el panel de
-Mercado Pago, y en el sistema con la solicitud de cancelación
-(`Casas_back#100` / `Casas_front#80`, ya mergeados).
+**Pendientes (22-oct-2026):**
+- La devolución de esta prueba se registra desde el panel de Mercado Pago,
+  y en el sistema con la solicitud de cancelación (`Casas_back#100` /
+  `Casas_front#80`, ya mergeados).
+- **Regresar las credenciales reales de Omar Carrillo Cen** al `.env` de
+  producción — ahora mismo sigue puesta la cuenta personal del operador
+  (`emilianoch56@gmail.com`), usada a propósito para esta prueba. Mientras
+  no se cambie, los pagos reales de huéspedes le llegan a la cuenta
+  personal, no a la del negocio.
+- **Reportes:** agregar un desglose por proveedor (Mercado Pago vs.
+  Stripe) — cuánto se cobró y cuánto se quedó cada uno en el rango de
+  fechas elegido. Hoy el badge de proveedor solo está en el listado de
+  Reservas (`Casas_back#102` / `Casas_front#82`), no en la pantalla de
+  Reportes.
 
 ---
 
