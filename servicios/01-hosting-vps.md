@@ -336,6 +336,70 @@ systemctl reload php8.3-fpm
 `post_max_size` queda arriba de `upload_max_filesize` a propósito (el POST completo incluye el archivo más el resto del formulario). Combina con el límite de 20MB que ya tiene Nginx (`client_max_body_size`, ver la sección de Nginx arriba).
 
 
+## Seguridad: parches de PHP
+
+### PHP2Shell — CVE-2026-109618 y CVE-2026-109619 (21-oct-2026)
+
+Dos fallas críticas de PHP (CVSS 9.2) que permitían ejecutar código en el
+servidor **sin iniciar sesión**. Afectaban a todo PHP desde la 5.4; los
+detalles se filtraron el 20-oct y hubo ataques en curso. El front (Vercel,
+Next.js) no usa PHP: solo estaba expuesto este droplet.
+
+**Qué se hizo** (como `root`, el usuario `deploy` no tiene permisos para esto):
+
+1. **Mitigación** recomendada por los investigadores mientras se parchaba,
+   con respaldo previo de los dos `php.ini`
+   (`php.ini.bak-2026-10-21`):
+   ```bash
+   sed -i 's/^;\?session.upload_progress.enabled.*/session.upload_progress.enabled = Off/' \
+     /etc/php/8.3/fpm/php.ini /etc/php/8.3/cli/php.ini
+   ```
+   Laravel no usa esa función; se deja apagada.
+2. **Parche** de Ubuntu (canal `noble-security`). Ubuntu no sube el número a
+   8.3.36: aplica la corrección sobre su versión, que pasó de
+   `8.3.6-0ubuntu0.24.04.12` a **`8.3.6-0ubuntu0.24.04.13`**.
+   ```bash
+   apt update
+   apt install -y --only-upgrade 'php8.3*'
+   systemctl restart php8.3-fpm
+   ```
+   `needrestart` reinició solo `rivierabnb-queue` y `rivierabnb-reverb`.
+3. **Verificado:** el changelog del paquete
+   (`zcat /usr/share/doc/php8.3-fpm/changelog.Debian.gz | head`) trae
+   `CVE-2026-109618_109619.patch`; `php -i` muestra
+   `session.upload_progress.enabled => Off`; PHP-FPM, Nginx, cola y Reverb
+   `active`; `https://api.rivierabnb.com/up` → 200.
+
+**Protección adicional:** `api.rivierabnb.com` pasa por el proxy de Cloudflare
+(nube naranja), que publicó reglas de WAF contra estos ataques. Ayuda, pero no
+reemplaza el parche.
+
+### Parches automáticos
+
+`unattended-upgrades` está **encendido**
+(`/etc/apt/apt.conf.d/20auto-upgrades` con `Unattended-Upgrade "1"`): Ubuntu
+instala solo los parches del canal de seguridad una vez al día. Por eso, ante
+una falla urgente, **conviene aplicarlo a mano el mismo día** en vez de esperar
+la corrida diaria.
+
+Pendiente: quedaron **13 actualizaciones que no son de PHP** sin aplicar
+(`apt list --upgradable`). Aplicarlas en un rato tranquilo con `apt upgrade`; si
+alguna pide reiniciar el droplet, la API se cae alrededor de un minuto.
+
+### Si vuelve a pasar
+
+```bash
+apt update && apt list --upgradable 2>/dev/null | grep -i php
+apt install -y --only-upgrade 'php8.3*'
+systemctl restart php8.3-fpm
+zcat /usr/share/doc/php8.3-fpm/changelog.Debian.gz | head -15   # confirmar la CVE
+systemctl is-active php8.3-fpm nginx rivierabnb-queue rivierabnb-reverb
+curl -s -o /dev/null -w "%{http_code}\n" https://api.rivierabnb.com/up
+```
+
+Acceso como `root`: desde la PC con la llave `aldrick-pc`, o desde
+DigitalOcean → droplet → **Access → Launch Droplet Console**.
+
 ## Costos aproximados (mensual)
 
 - Droplet 2 vCPU / 4 GB: **$24 USD/mes**, sin backups automáticos.
