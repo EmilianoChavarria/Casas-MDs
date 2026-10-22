@@ -36,7 +36,7 @@
 
 ---
 
-## ⏳ Producción: estado y pendientes (20-oct-2026)
+## ✅ Producción: probado con dinero real (22-oct-2026)
 
 Revisado en el servidor (`deploy@201.79.51.112`, `/var/www/rivierabnb-backend`)
 sin mostrar ninguna clave:
@@ -46,61 +46,29 @@ sin mostrar ninguna clave:
 | `MERCADOPAGO_ACCESS_TOKEN` de **producción** (empieza con `APP_USR-`, no `TEST-`) | ✅ |
 | `MERCADOPAGO_SANDBOX=false` | ✅ |
 | `MERCADOPAGO_WEBHOOK_BASE_URL=https://api.rivierabnb.com` | ✅ |
-| `MERCADOPAGO_WEBHOOK_SECRET` | ⏳ **vacío** |
-| Interruptor `payments.manual_mode` en la base | ❌ **apagado**: `GET /api/v1/payment-settings` responde `manual_mode: false` |
+| `MERCADOPAGO_WEBHOOK_SECRET` | ✅ **vacío a propósito** — ver el aviso en "Configuración" más abajo, nunca ponerle nada |
+| Interruptor `payments.manual_mode` en la base | ✅ **encendido** |
 
-⚠️ **Mientras el interruptor esté apagado, el sitio ofrece pago con Stripe**,
-que sigue en modo de pruebas: un huésped real no podría pagar de verdad.
+### Prueba con dinero real — ya hecha
 
-### Pendientes (hacerlos con el cliente)
+Un pago real de $48.10 MXN sobre una "Casa Prueba", pagado por el propio
+operador con su tarjeta. Sirvió además para encontrar y corregir un bug real
+(ver el aviso de `MERCADOPAGO_WEBHOOK_SECRET` abajo): los avisos de pago real
+se rechazaban todos con 400, así que la reserva se hubiera quedado
+"pendiente" para siempre sin que nadie se enterara. Ya corregido y
+confirmado: el aviso llega, se reprocesa y `reported_paid_at` queda puesto.
 
-**1. Encender Mercado Pago en producción**
+⚠️ **Un detalle al repetir esta prueba:** si quien paga usa una tarjeta o
+cuenta de Mercado Pago ligada a la MISMA cuenta que está configurada para
+*cobrar* (la del `.env`), el botón "Pagar" se queda bloqueado sin ningún
+mensaje de error — Mercado Pago no deja que una cuenta se pague a sí misma.
+No es un bug del sitio; hace falta una tarjeta/cuenta de otra persona para
+probar, o usar ya las credenciales reales del negocio en vez de unas de
+prueba personales.
 
-```bash
-ssh deploy@201.79.51.112
-cd /var/www/rivierabnb-backend
-php artisan tinker --execute="App\Models\Configuration::set('payments.manual_mode','true','boolean');"
-php artisan cache:clear
-```
-
-Comprobar en https://api.rivierabnb.com/api/v1/payment-settings que diga
-`"manual_mode":true`.
-
-**2. Poner el secreto del webhook** (no bloquea los cobros: el sistema vuelve a
-consultar cada pago a la API de Mercado Pago antes de darlo por bueno; el
-secreto agrega la verificación de la firma `x-signature`)
-
-1. Mercado Pago Developers → **Tus integraciones** → la aplicación → **Webhooks**.
-2. Confirmar la URL `https://api.rivierabnb.com/api/v1/webhooks/mercadopago`
-   con el evento **Pagos** marcado.
-3. Copiar la **clave secreta** y pegarla en el `.env` del servidor
-   (`nano .env`, línea `MERCADOPAGO_WEBHOOK_SECRET=`). No compartirla por chat.
-4. Aplicar:
-   ```bash
-   php artisan config:cache
-   php artisan queue:restart
-   ```
-
-**3. Prueba con dinero real**
-
-- **No bajar el precio de una casa real**: alguien podría reservarla barata
-  durante la prueba. Dar de alta una **casa de prueba**, publicada solo durante
-  la prueba, a **unos $20 MXN por noche**.
-- Orden:
-  1. Reservar como huésped (cuenta real, correo propio).
-  2. Pagar con tarjeta propia por el link de Mercado Pago.
-  3. En el panel, **"Confirmar pago de Mercado Pago"** en la reserva.
-  4. Revisar que llegue el correo de confirmación y que el cobro salga en
-     **Reportes → Caja**.
-- **Devolución:** hacerla desde el panel de Mercado Pago. Para registrarla en el
-  sistema (y que cuente en los reportes) primero hay que fusionar
-  `Casas_back#100` y luego `Casas_front#80` (solicitud de cancelación y
-  devoluciones registradas a mano).
-- **Comisión:** Mercado Pago cobra la suya y normalmente no la regresa al
-  reembolsar. Con $20 son centavos.
-- **Al terminar:** archivar la casa de prueba y decidir si la reserva y el pago
-  de prueba se quedan en los reportes (anotando que fue prueba) o se marcan
-  para que no cuenten.
+**Pendiente:** la devolución de esta prueba se registra desde el panel de
+Mercado Pago, y en el sistema con la solicitud de cancelación
+(`Casas_back#100` / `Casas_front#80`, ya mergeados).
 
 ---
 
@@ -160,8 +128,10 @@ Mercado Pago tampoco cobra por mes ni por probar:
 ```
 MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxx
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxx
-MERCADOPAGO_WEBHOOK_SECRET=<clave de validación de firma, si aplica>
+MERCADOPAGO_WEBHOOK_SECRET=
 ```
+
+> ⚠️ **Debe quedarse vacío — no es la clave del panel de "Webhooks".** Descubierto el 22-oct-2026, con el primer pago real: el aviso le llega al backend por el `notification_url` que se manda al CREAR la preferencia de pago, no por la suscripción de "Webhooks" del panel. Ese canal entrega siempre en formato IPN clásico (parámetros en la URL, sin `x-signature`), sin importar qué se configure en el panel. Poner ahí la clave secreta que Mercado Pago muestra en **Webhooks → Configurar notificaciones** hace que el backend rechace **todos** los avisos reales con 400 — un pago real se queda en "pendiente" para siempre, sin ningún error visible salvo en el log del servidor. No hace falta esa firma para estar seguros: el backend siempre vuelve a consultar el pago directo con la API de Mercado Pago antes de dar nada por bueno.
 
 ### Flujo en el backend (resumen, SDK oficial `mercadopago/dx-php`)
 ```php
