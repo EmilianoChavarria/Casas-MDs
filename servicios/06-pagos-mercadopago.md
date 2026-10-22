@@ -70,16 +70,50 @@ prueba personales.
 - La devolución de esta prueba se registra desde el panel de Mercado Pago,
   y en el sistema con la solicitud de cancelación (`Casas_back#100` /
   `Casas_front#80`, ya mergeados).
-- **Regresar las credenciales reales de Omar Carrillo Cen** al `.env` de
-  producción — ahora mismo sigue puesta la cuenta personal del operador
-  (`emilianoch56@gmail.com`), usada a propósito para esta prueba. Mientras
-  no se cambie, los pagos reales de huéspedes le llegan a la cuenta
-  personal, no a la del negocio.
-- **Reportes:** agregar un desglose por proveedor (Mercado Pago vs.
-  Stripe) — cuánto se cobró y cuánto se quedó cada uno en el rango de
-  fechas elegido. Hoy el badge de proveedor solo está en el listado de
-  Reservas (`Casas_back#102` / `Casas_front#82`), no en la pantalla de
-  Reportes.
+- ✅ **Credenciales del negocio (Omar Carrillo Cen)** puestas en el `.env`
+  de producción el 22-oct-2026, en lugar de la cuenta personal del
+  operador usada para la prueba. Los pagos de huéspedes ya llegan a la
+  cuenta del negocio.
+- ✅ **Reportes por proveedor:** tabla "Por proveedor" en Reportes → Caja,
+  con cobrado, comisión, neto, devuelto y lo que se quedó cada uno
+  (`Casas_back#103` / `Casas_front#84`).
+- ⏳ **Comisión real de Mercado Pago** (`Casas_back#104` /
+  `Casas_front#89`): hasta ahora se guardaba en cero. Al desplegar, correr
+  una vez en el servidor como `deploy`:
+  ```bash
+  cd /var/www/rivierabnb-backend
+  php artisan payments:reconcile --dry-run   # solo enseña
+  php artisan payments:reconcile             # guarda
+  ```
+
+### Cómo cambiar las credenciales de Mercado Pago
+
+1. Mercado Pago Developers (cuenta del negocio) → **Tus integraciones** → la
+   aplicación → **Credenciales de producción**: Access Token y Public Key,
+   los dos empiezan con `APP_USR-`.
+2. **Antes:** revisar que no haya reservas pendientes de pago. Su link es de
+   la cuenta anterior; si se paga después del cambio, el dinero llega a esa
+   cuenta y hay que confirmarla a mano.
+3. En el servidor:
+   ```bash
+   ssh deploy@201.79.51.112
+   cd /var/www/rivierabnb-backend
+   cp .env .env.bak-$(date +%F)
+   nano .env        # MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_PUBLIC_KEY
+   ```
+   No tocar `MERCADOPAGO_WEBHOOK_SECRET` (vacío) ni `MERCADOPAGO_SANDBOX=false`.
+4. Comprobar sin mostrar las claves y aplicar:
+   ```bash
+   grep -cE '^MERCADOPAGO_ACCESS_TOKEN=APP_USR-' .env   # 1
+   grep -cE '^MERCADOPAGO_PUBLIC_KEY=APP_USR-' .env     # 1
+   php artisan config:cache
+   php artisan queue:restart
+   sudo systemctl reload php8.3-fpm
+   ```
+5. Probar con una reserva de pocos pesos y una tarjeta que **no** sea de la
+   cuenta que cobra (Mercado Pago no deja que una cuenta se pague a sí
+   misma).
+6. Si algo falla: `cp .env.bak-AAAA-MM-DD .env` y repetir el paso 4.
 
 ---
 

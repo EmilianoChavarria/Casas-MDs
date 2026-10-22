@@ -1030,9 +1030,9 @@ Los reportes de ingresos suman el total de la reserva (congelado al
 reservar), no algo que dependa de qué pasarela se usó: en cuanto una reserva
 por Mercado Pago se confirma, cuenta exactamente igual que una de Stripe. El
 reporte de cobros por proveedor —el que sí distingue entre pasarelas—
-muestra a Mercado Pago como su propia fila, con su comisión en cero por
-omisión (no se consulta por API en esta etapa) y con un campo para que el
-administrador la corrija a mano si algún día importa esa precisión.
+muestra a Mercado Pago como su propia fila, con la comisión que de verdad
+cobró: desde el 22-oct-2026 se lee de su API al confirmar el pago
+(`Casas_back#104`).
 
 ### El interruptor
 
@@ -1043,9 +1043,10 @@ cobrado por Mercado Pago, que queda en el historial para siempre.
 
 ### Lo que queda pendiente de verificar
 
-> ⏳ **20-oct-2026:** en producción el interruptor `payments.manual_mode` está
-> **apagado**, falta el secreto del webhook y falta la prueba con dinero real.
-> Pasos en [`servicios/06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md#-producción-estado-y-pendientes-20-oct-2026).
+> ✅ **22-oct-2026:** en producción el interruptor está encendido, la prueba
+> con dinero real se hizo y ya están las credenciales del negocio. El secreto
+> del webhook se deja **vacío a propósito**. Detalle en
+> [`servicios/06-pagos-mercadopago.md`](servicios/06-pagos-mercadopago.md).
 
 - La integración se probó en el sandbox de Mercado Pago con un vendedor y un
   comprador de prueba, no en producción: antes de activar el modo con dinero
@@ -1056,10 +1057,11 @@ cobrado por Mercado Pago, que queda en el historial para siempre.
 - Mercado Pago manda avisos en dos formatos (JSON y por parámetros en la
   URL); el sistema ya procesa los dos, y descarta los que no son de pago
   (`merchant_order`) sin tratarlos como inválidos.
-- Mercado Pago no documenta su propia comisión por cobro consultable por
-  API. Si el cliente quiere que el reporte la refleje con exactitud, hay un
-  campo para anotarla a mano al confirmar cada pago; si no se usa, el
-  reporte asume que no cobra nada, que es la cifra más simple.
+- ✅ **La comisión sí se consulta por API** (corregido el 22-oct-2026). Se
+  creía que Mercado Pago no la informaba, pero `GET /v1/payments/{id}` trae
+  `fee_details` y `transaction_details.net_received_amount`. El sistema la
+  lee al confirmar cada pago; los cobros anteriores se corrigen corriendo
+  una vez `php artisan payments:reconcile` (`Casas_back#104`).
 
 ---
 ## D18 — Reservas de último momento: ¿periodo de gracia para cancelar?
