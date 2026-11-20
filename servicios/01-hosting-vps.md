@@ -297,6 +297,25 @@ sudo systemctl start rivierabnb-queue
 ```
 `Restart=always`: si el proceso muere por cualquier motivo, systemd lo vuelve a levantar solo, y arranca automático si se reinicia el servidor. `--max-time=3600`: el worker se reinicia solo cada hora, para no acumular memoria indefinidamente.
 
+> ⚠️ **`Restart=always` solo no basta** (lección del 13-nov-2026, ver [Caída de la cola](#caída-de-la-cola-13-al-20-nov-2026)). Con los valores por defecto de systemd (`RestartSec=100ms`, límite de 5 arranques en 10 s), si MySQL se reinicia el worker falla cientos de veces en un segundo y systemd **deja de intentarlo para siempre**. Por eso la cola y Reverb llevan este override:
+
+```bash
+sudo mkdir -p /etc/systemd/system/rivierabnb-queue.service.d
+sudo tee /etc/systemd/system/rivierabnb-queue.service.d/override.conf > /dev/null << 'EOF'
+[Unit]
+StartLimitIntervalSec=0
+Wants=mysql.service
+
+[Service]
+RestartSec=5
+EOF
+sudo mkdir -p /etc/systemd/system/rivierabnb-reverb.service.d
+sudo cp /etc/systemd/system/rivierabnb-queue.service.d/override.conf /etc/systemd/system/rivierabnb-reverb.service.d/
+sudo systemctl daemon-reload
+systemctl show rivierabnb-queue -p StartLimitIntervalUSec -p RestartUSec   # → 0 y 5s
+```
+Reintenta cada 5 s sin límite hasta que MySQL vuelva.
+
 ### Scheduler (cron)
 
 ```bash
@@ -374,6 +393,11 @@ Next.js) no usa PHP: solo estaba expuesto este droplet.
 (nube naranja), que publicó reglas de WAF contra estos ataques. Ayuda, pero no
 reemplaza el parche.
 
+> ⚠️ **Corrección (20-nov-2026):** hoy `api.rivierabnb.com` **no** pasa por el
+> proxy de Cloudflare: el DNS resuelve directo a `201.79.51.112` y las
+> respuestas no traen `cf-ray`. Nginx recibe internet sin intermediario. Ver
+> [Pendientes del servidor](#pendientes-del-servidor).
+
 ### Parches automáticos
 
 `unattended-upgrades` está **encendido**
@@ -382,9 +406,16 @@ instala solo los parches del canal de seguridad una vez al día. Por eso, ante
 una falla urgente, **conviene aplicarlo a mano el mismo día** en vez de esperar
 la corrida diaria.
 
-Pendiente: quedaron **13 actualizaciones que no son de PHP** sin aplicar
-(`apt list --upgradable`). Aplicarlas en un rato tranquilo con `apt upgrade`; si
-alguna pide reiniciar el droplet, la API se cae alrededor de un minuto.
+Solo instala `noble-security`; las de `noble-updates` (mantenimiento, kernel)
+**nunca** entran solas, y el droplet **nunca se reinicia solo**. Hay que hacer el
+[mantenimiento mensual](#mantenimiento-mensual) a mano.
+
+Ojo con el horario: la instalación corre ~06:00 UTC, pero la lista de paquetes
+se refresca después (~11:00 UTC). Un parche publicado hoy entra hasta mañana:
+para algo crítico, aplicarlo a mano.
+
+⚠️ Una actualización de seguridad de **MySQL** lo reinicia. Así se cayó la cola
+el 13-nov (ver abajo); con el override de systemd ya no pasa.
 
 ### Si vuelve a pasar
 
@@ -398,7 +429,104 @@ curl -s -o /dev/null -w "%{http_code}\n" https://api.rivierabnb.com/up
 ```
 
 Acceso como `root`: desde la PC con la llave `aldrick-pc`, o desde
-DigitalOcean → droplet → **Access → Launch Droplet Console**.
+DigitalOcean → droplet → **Access → Launch Droplet Console**. Desde otras PCs
+se entra como `deploy` (`ssh deploy@201.79.51.112`); `deploy` tiene `sudo` con
+contraseña.
+
+## Seguridad: parches de Nginx
+
+### CVE-2026-123007 y CVE-2026-123633 (20-nov-2026)
+
+Aviso de DigitalOcean: dos fallas críticas (CVSS 9.2) en el **HTTP/2** de
+Nginx que permiten ejecutar código sin autenticación. **No eran explotables
+aquí**: el `listen 443 ssl;` que escribió certbot no lleva `http2`, así que
+Nginx solo habla HTTP/1.1 (verificado con `curl --http2` → `1.1`). Se parchó
+igual.
+
+Ubuntu no sube a 1.30.7: aplica el parche a su 1.24 (`1.24.0-2ubuntu7.20`
+trae los dos CVE; se instaló `7.21`).
+```bash
+sudo apt update && sudo apt install --only-upgrade nginx nginx-common
+sudo nginx -t && sudo systemctl restart nginx
+zcat /usr/share/doc/nginx/changelog.Debian.gz | grep -cE "CVE-2026-123007|CVE-2026-123633"   # → 4
+```
+**HTTP/2 se deja apagado:** la API devuelve JSON suelto (la ganancia sería de
+milisegundos) y los estáticos los sirve Vercel, que ya usa HTTP/2/3.
+
+### Compresión del JSON (20-nov-2026)
+
+`nginx.conf` trae `gzip on;` pero solo comprime HTML; la API salía sin
+comprimir. Se agregó, en archivo aparte para que una actualización no lo pise:
+```bash
+sudo tee /etc/nginx/conf.d/gzip.conf > /dev/null << 'EOF'
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_types application/json text/plain text/css application/javascript text/xml application/xml;
+EOF
+sudo nginx -t && sudo systemctl reload nginx
+```
+No repetir `gzip on;` (ya está en `nginx.conf`; duplicado = error). Resultado:
+`/api/v1/properties?per_page=12` bajó de 5,341 a 1,534 bytes (−71%).
+
+## Caída de la cola (13 al 20-nov-2026)
+
+**Qué pasó:** el 13-nov a las 06:32 UTC `unattended-upgrades` actualizó
+`mysql-server-8.0` y MySQL se reinició. El worker
+(`rivierabnb-queue.service`) falló 198 veces en ~1 s con `Connection refused`
+y systemd se rindió (`Start request repeated too quickly`). MySQL volvió en
+segundos y la API siguió bien, pero **la cola quedó apagada 7 días**. El
+scheduler (cron) siguió encolando: se juntaron 2,346 trabajos.
+
+**Efectos:** no se expiraron reservas sin pagar (fechas bloqueadas), no se
+refrescó el caché del front tras ediciones del admin, quedó una traducción
+pendiente y los recordatorios por fecha de esos días (instrucciones de llegada,
+check-in, petición de reseña) no salieron. Confirmaciones de reserva y avisos
+al admin **sí** salieron: no pasan por la cola.
+
+**Cómo se resolvió (20-nov):**
+1. Se borraron los 2,330 duplicados de limpieza (`ExpirePendingBookings`,
+   `EvaluateDepartureMinimum`), que solo revisan el estado actual.
+2. Override de systemd (sección [Worker de colas](#worker-de-colas-systemd)).
+3. `systemctl reset-failed` + `start`; procesó los 16 restantes.
+4. Alerta en Sentry Crons: el job `QueueHeartbeat` (PR #128 de `Casas_back`)
+   hace check-in **desde el worker** cada 5 min. Si se cae el worker o el cron,
+   Sentry abre issue tras 2 latidos perdidos (monitor `queue-heartbeat`).
+
+**Diagnóstico rápido si vuelve a pasar:**
+```bash
+systemctl is-active rivierabnb-queue rivierabnb-reverb
+sudo journalctl -u rivierabnb-queue --no-pager -n 40
+cd /var/www/rivierabnb-backend && php artisan queue:monitor database:default
+```
+
+## Mantenimiento mensual
+
+En horario tranquilo (noche); la API se cae 1–2 min por el reinicio.
+```bash
+cd /var/www/rivierabnb-backend && php artisan backup:run --only-db
+sudo apt update && sudo apt upgrade          # conservar configs propias (N)
+curl -s -o /dev/null -w "%{http_code}\n" https://api.rivierabnb.com/up
+sudo reboot
+# al volver:
+uname -r
+systemctl is-active nginx php8.3-fpm mysql rivierabnb-queue rivierabnb-reverb
+curl -s -o /dev/null -w "%{http_code}\n" https://api.rivierabnb.com/up
+```
+Último: **20-nov-2026** (46 paquetes, kernel `6.8.0-151`).
+
+## Pendientes del servidor
+
+- **Cloudflare como proxy** para `api.` (hoy en gris): oculta la IP, filtra
+  ataques y da HTTP/2/3 al visitante. Requiere ajustar timeouts del WebSocket y
+  restringir el 443 del firewall a las IPs de Cloudflare.
+- **Timeout del chat:** `location /app/` tiene `proxy_read_timeout 60s`, el
+  mismo intervalo del ping de Reverb. La sección 8.3 de arquitectura advierte
+  que así la conexión se puede cortar cada minuto. Subirlo a `3600s` (y
+  `proxy_send_timeout`).
+- **Ocultar versión:** `server_tokens off;` (hoy responde
+  `Server: nginx/1.24.0 (Ubuntu)`).
 
 ## Costos aproximados (mensual)
 
