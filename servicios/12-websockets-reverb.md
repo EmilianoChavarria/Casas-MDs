@@ -98,6 +98,12 @@ NEXT_PUBLIC_REVERB_HOST=ws.midominio.com
 
 ⚠️ Solo `REVERB_APP_KEY` va al frontend. `REVERB_APP_SECRET` **jamás** — todo lo prefijado con `NEXT_PUBLIC_` queda visible en el bundle del navegador.
 
+> ⚠️ **Plan original, no es lo que está en producción.** Docker se descartó el
+> 13-oct-2026 (instalación nativa). En producción Reverb corre como
+> `rivierabnb-reverb.service` en `127.0.0.1:8080` y Nginx lo expone en el mismo
+> `api.rivierabnb.com` bajo `location /app/` y `/apps/`, sin subdominio `ws.` y
+> **sin `http2`**. Ver `01-hosting-vps.md`.
+
 ### Docker Compose
 ```yaml
   reverb:

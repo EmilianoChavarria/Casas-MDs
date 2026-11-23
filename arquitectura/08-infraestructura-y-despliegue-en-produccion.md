@@ -1,5 +1,7 @@
 # 8. Infraestructura y despliegue en producción
 
+> ⚠️ **Plan con Docker descartado el 13-oct-2026.** Producción corre nativo en Ubuntu 24.04 (Nginx + PHP-FPM + MySQL + systemd), sin contenedores. Lo vigente está en `servicios/01-hosting-vps.md`; aquí se conserva el razonamiento (timeouts, capas) que sigue aplicando.
+
 
 ### 8.1 Topología
 
